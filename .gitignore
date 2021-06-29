@@ -129,3 +129,7 @@ dmypy.json
 .pyre/
 .idea/*
 .env
+
+**/.DS_Store
+sessions/*.session
+sessions/*.session-journal
