@@ -47,7 +47,8 @@ async def smart_inline_media(medias: list):
                 meta = urlopen(content).info()
                 media_type = meta['Content-Type'].split('/')[0]
                 result_id = f'{hash(content)}-{index}'
-                caption = f'<a href=\'https://www.instagram.com/{media.user.username}\'>{media.user.username}</a>: {media.caption}' if isinstance(media, InstagramPost) else None
+                caption = f'<a href=\'https://www.instagram.com/{media.user.username}\'>{media.user.username}</a>: {media.caption}' if isinstance(
+                    media, InstagramPost) else None
                 if int(meta['Content-Length']) / 1024 / 1024 >= MAX_FILE_SIZE:
                     result.append(InlineQueryResultPhoto(id=result_id, photo_url=preview, thumb_url=preview,
                                                          title=f'📹 @{media.user.username}',
@@ -85,6 +86,8 @@ async def smart_send_media(bot: Bot, upload_client: UploadClient, chat_id: int, 
             for content in media.media:
                 meta = urlopen(content).info()
                 media_type = meta['Content-Type'].split('/')[0]
+                caption = f'<a href=\'https://www.instagram.com/{media.user.username}\'>{media.user.username}</a>: {media.caption}' if isinstance(
+                    media, InstagramPost) else None
                 if int(meta["Content-Length"]) / 1024 / 1024 >= MAX_FILE_SIZE:
                     if not tmp_message:
                         tmp_message = await bot.send_message(chat_id=chat_id, text='📸 Начинается выгрузка контента...')
@@ -93,15 +96,16 @@ async def smart_send_media(bot: Bot, upload_client: UploadClient, chat_id: int, 
                 else:
                     output = BytesIO((await client.get(content)).content)
                 if media_type == 'video':
-                    media_group.attach_video(output)
+                    media_group.attach_video(output, caption=caption)
                 elif media_type == 'image':
-                    media_group.attach_photo(output)
+                    media_group.attach_photo(output, caption=caption)
                 if len(media_group.media) == 10 or (not all_as_group and content is media.media[-1]) or (
                         all_as_group and media is medias[-1]):
                     await ChatActions.upload_video()
                     await bot.send_media_group(chat_id=chat_id, media=media_group)
                     if not all_as_group and isinstance(media, InstagramPost) and media.caption:
-                        await bot.send_message(chat_id=chat_id, text=f'<a href=\'https://www.instagram.com/{media.user.username}\'>{media.user.username}</a>: {media.caption}')
+                        await bot.send_message(chat_id=chat_id,
+                                               text=f'<a href=\'https://www.instagram.com/{media.user.username}\'>{media.user.username}</a>: {media.caption}')
                     media_group = MediaGroup()
     try:
         await tmp_message.delete()
