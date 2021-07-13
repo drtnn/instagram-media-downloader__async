@@ -86,8 +86,6 @@ async def smart_send_media(bot: Bot, upload_client: UploadClient, chat_id: int, 
             for content in media.media:
                 meta = urlopen(content).info()
                 media_type = meta['Content-Type'].split('/')[0]
-                caption = f'<a href=\'https://www.instagram.com/{media.user.username}\'>{media.user.username}</a>: {media.caption}' if isinstance(
-                    media, InstagramPost) else None
                 if int(meta["Content-Length"]) / 1024 / 1024 >= MAX_FILE_SIZE:
                     if not tmp_message:
                         tmp_message = await bot.send_message(chat_id=chat_id, text='📸 Начинается выгрузка контента...')
@@ -96,9 +94,9 @@ async def smart_send_media(bot: Bot, upload_client: UploadClient, chat_id: int, 
                 else:
                     output = BytesIO((await client.get(content)).content)
                 if media_type == 'video':
-                    media_group.attach_video(output, caption=caption)
+                    media_group.attach_video(output)
                 elif media_type == 'image':
-                    media_group.attach_photo(output, caption=caption)
+                    media_group.attach_photo(output)
                 if len(media_group.media) == 10 or (not all_as_group and content is media.media[-1]) or (
                         all_as_group and media is medias[-1]):
                     await ChatActions.upload_video()
