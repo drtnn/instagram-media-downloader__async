@@ -10,6 +10,7 @@ BOT_NAME = env.str('BOT_NAME')
 COOKIE = env.str('COOKIE')
 
 DATABASE_URL = env.str('DATABASE_URL')
+DB_NAME = env.str('DB_NAME')
 DB_HOST = env.str('DB_HOST')
 DB_USER = env.str('DB_USER')
 DB_PASSWORD = env.str('DB_PASSWORD')

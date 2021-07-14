@@ -2,6 +2,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 import asyncio
 from data.config import BOT_TOKEN, TELETHON_SESSION, TELETHON_API_ID, TELETHON_API_HASH
+from utils.db_api.database import create_database
 from utils.upload_client import UploadClient
 
 loop = asyncio.get_event_loop()
@@ -10,3 +11,4 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
 upload_client = loop.run_until_complete(UploadClient(TELETHON_SESSION, TELETHON_API_ID, TELETHON_API_HASH).start())
+database = loop.run_until_complete(create_database())

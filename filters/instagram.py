@@ -1,6 +1,6 @@
 from aiogram.types import Message, InlineQuery
 from aiogram.dispatcher.filters import BoundFilter
-from utils.instagram.instagram import InstagramUser
+from utils.instagram.types import InstagramUser
 
 
 class InstagramPostFilter(BoundFilter):

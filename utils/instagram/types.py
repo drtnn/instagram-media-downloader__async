@@ -105,10 +105,10 @@ async def smart_send_media(bot: Bot, upload_client: UploadClient, chat_id: int, 
                         await bot.send_message(chat_id=chat_id,
                                                text=f'<a href=\'https://www.instagram.com/{media.user.username}\'>{media.user.username}</a>: {media.caption}')
                     media_group = MediaGroup()
-    try:
-        await tmp_message.delete()
-    finally:
-        pass
+        try:
+            await tmp_message.delete()
+        except:
+            pass
 
 
 class InstagramUser:
