@@ -7,7 +7,7 @@ env.read_env()
 ADMINS = [int(user_id) for user_id in env.list('ADMINS')]
 BOT_TOKEN = env.str('BOT_TOKEN')
 BOT_NAME = env.str('BOT_NAME')
-COOKIE = env.str('COOKIE')
+COOKIE = env.list('COOKIE')
 
 DATABASE_URL = env.str('DATABASE_URL')
 DB_NAME = env.str('DB_NAME')

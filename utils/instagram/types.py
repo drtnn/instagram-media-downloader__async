@@ -1,10 +1,11 @@
 from aiogram import Bot
+from aiogram.utils.exceptions import MessageToDeleteNotFound
 from aiogram.types import MediaGroup, ChatActions, CallbackQuery, InlineQuery, InlineQueryResultPhoto, \
-    InlineQueryResultMpeg4Gif, InputTextMessageContent
+    InlineQueryResultMpeg4Gif
 from aiogram.utils.markdown import text
-from bs4 import BeautifulSoup as BS
+from bs4 import BeautifulSoup
 from data.config import BOT_NAME
-from .headers import headers, headers_stories, headers_agent_list
+from .headers import headers, headers_stories
 from http3 import AsyncClient
 from http3.exceptions import InvalidURL
 from .instagram_query_result import inline_no_such_user, inline_no_actual_stories, inline_no_such_media, \
@@ -12,7 +13,6 @@ from .instagram_query_result import inline_no_such_user, inline_no_actual_storie
 from io import BytesIO
 import json
 from keyboards.inline.instagram import user_keyboard, media_keyboard
-import random
 from utils.upload_client import UploadClient
 from urllib.parse import urlparse, urlencode
 from urllib.request import urlopen
@@ -107,7 +107,7 @@ async def smart_send_media(bot: Bot, upload_client: UploadClient, chat_id: int, 
                     media_group = MediaGroup()
         try:
             await tmp_message.delete()
-        except:
+        except MessageToDeleteNotFound:
             pass
 
 
@@ -135,7 +135,7 @@ class InstagramUser:
         if 'instagram.com' in self.username:
             self.username = self.__set_username_from_link()
         client = AsyncClient()
-        result = await client.get(url=f'https://www.instagram.com/{self.username}/?__a=1', headers=headers)
+        result = await client.get(url=f'https://www.instagram.com/{self.username}/?__a=1', headers=headers())
         try:
             data = json.loads(result.text)
             user = data['graphql']['user']
@@ -230,8 +230,7 @@ class InstagramUser:
         elif self and self.user_id and not self.is_private:
             client = AsyncClient()
             url = f'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids={self.user_id}'
-            headers_stories['user-agent'] = headers_agent_list[random.randrange(0, 4)]
-            result = await client.get(url=url, headers=headers_stories)
+            result = await client.get(url=url, headers=headers_stories())
             try:
                 data = json.loads(result.text)
             except ValueError:
@@ -262,10 +261,8 @@ class InstagramUser:
         elif self and self.user_id and not self.is_private and self.posts_count:
             client = AsyncClient()
             url = f'https://instagram.com/{self.username}'
-            headers['referer'] = url
-            headers['user-agent'] = headers_agent_list[random.randrange(0, 4)]
-            result = await client.get(url=url, headers=headers)
-            soup = BS(result.text, 'lxml')
+            result = await client.get(url=url, headers=headers(referer=url))
+            soup = BeautifulSoup(result.text, 'lxml')
             shared_data = None
             for script in soup.select('script'):
                 if len(script.contents) and 'window._sharedData = ' in script.contents[0]:
@@ -276,9 +273,9 @@ class InstagramUser:
                     data = json.loads(shared_data.replace('window._sharedData = ', '')[:-1])
                 except ValueError:
                     return
+                posts = data['entry_data']['ProfilePage'][0]['graphql']['user']['edge_owner_to_timeline_media']['edges']
                 self.posts = []
-                for post in data['entry_data']['ProfilePage'][0]['graphql']['user']['edge_owner_to_timeline_media'][
-                    'edges']:
+                for post in posts:
                     if 'edge_sidecar_to_children' in post['node']:
                         tmp_post = InstagramPost(user=self,
                                                  caption=post['node']['edge_media_to_caption']['edges'][0]['node'][
@@ -290,11 +287,13 @@ class InstagramUser:
                             tmp_post.size.append(media['node']['dimensions'])
                         self.posts.append(tmp_post)
                     else:
-                        self.posts.append(InstagramPost(user=self, caption=
-                        post['node']['edge_media_to_caption']['edges'][0]['node']['text'] if
-                        post['node']['edge_media_to_caption']['edges'] else None, preview=[post['node']['display_url']],
-                                                        media=[get_post_link(post['node'])],
-                                                        size=[post['node']['dimensions']]))
+                        caption_edges = post['node']['edge_media_to_caption']['edges']
+                        self.posts.append(
+                            InstagramPost(user=self,
+                                          caption=caption_edges[0]['node']['text'] if caption_edges else None,
+                                          preview=[post['node']['display_url']],
+                                          media=[get_post_link(post['node'])],
+                                          size=[post['node']['dimensions']]))
                 return self.posts
 
     def __set_username_from_link(self):
@@ -323,12 +322,10 @@ class InstagramPost:
         shortcode_id = self.__get_shortcode()
         if not shortcode_id:
             return
-        headers['referer'] = self.link
-        headers['user-agent'] = headers_agent_list[random.randrange(0, 4)]
         url = 'https://www.instagram.com/graphql/query/?' + urlencode({'query_hash': '2c4c2e343a8f64c625ba02b2aa12c7f8',
                                                                        'variables': f'{{"shortcode":"{shortcode_id}","has_threaded_comments":true}}'})
         client = AsyncClient()
-        result = await client.get(url, headers=headers)
+        result = await client.get(url, headers=headers(referer=self.link))
         try:
             data = json.loads(result.text)['data']
             username = data['shortcode_media']['owner']['username']
@@ -347,8 +344,8 @@ class InstagramPost:
             self.preview.append(data['shortcode_media']['display_url'])
             self.media.append(get_post_link(data['shortcode_media']))
             self.size.append(data['shortcode_media']['dimensions'])
-        if data['shortcode_media']['edge_media_to_caption']['edges'] and 'edge_media_to_caption' in data[
-            'shortcode_media']:
+        if data['shortcode_media']['edge_media_to_caption']['edges'] and \
+                'edge_media_to_caption' in data['shortcode_media']:
             self.caption = data['shortcode_media']['edge_media_to_caption']['edges'][0]['node']['text']
         return self
 
@@ -405,9 +402,8 @@ class InstagramStory:
         if not self.link or not self.user:
             return
         url = f'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids={self.user.user_id}'
-        headers_stories['user-agent'] = headers_agent_list[random.randrange(0, 4)]
         client = AsyncClient()
-        result = await client.get(url, headers=headers_stories)
+        result = await client.get(url, headers=headers_stories())
         try:
             data = json.loads(result.text)['reels_media']
         except (ValueError, KeyError, TypeError, IndexError):
@@ -473,14 +469,13 @@ class InstagramHighlight:
     async def start(self):  # Получить ссылку на историю
         self.__is_started = True
         await self.__parse_highlight_id()
-        self.story_media_id = urlparse(self.link).query.split('&')[0].replace('story_media_id=',
-                                                                              '') if '?story_media_id=' in self.link else None
+        self.story_media_id = str(urlparse(self.link).query.split('&')[0]).replace('story_media_id=', '') \
+            if '?story_media_id=' in self.link else None
         if not self.highlight_id:
             return
         url = f'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids=highlight%3A{self.highlight_id}'
-        headers_stories['user-agent'] = headers_agent_list[random.randrange(0, 4)]
         client = AsyncClient()
-        result = await client.get(url, headers=headers_stories)
+        result = await client.get(url, headers=headers_stories())
         try:
             data = json.loads(result.text)['reels_media']
             username = data[0]['user']['username']
@@ -532,10 +527,9 @@ class InstagramHighlight:
             except (ValueError, KeyError, TypeError, IndexError):
                 return
         else:
-            headers_stories['user-agent'] = headers_agent_list[random.randrange(0, 4)]
             client = AsyncClient()
             try:
-                result = await client.get(url=self.link, headers=headers_stories)
+                result = await client.get(url=self.link, headers=headers_stories())
                 for data in result.history:
                     if data.is_redirect:
                         link = urlparse(data.headers.raw[1][1].decode('utf-8'))[2].split('/')

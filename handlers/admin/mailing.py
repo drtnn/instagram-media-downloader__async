@@ -5,14 +5,9 @@ from states.mailing import Mailing
 from utils.db_api.database import User
 
 
-@dp.message_handler(is_admin=True, commands=['cancel'], state='*')
-async def bot_admin_cancel(message: Message, state: FSMContext):
-    await state.reset_state()
-
-
 @dp.message_handler(is_admin=True, commands=['mailing'])
 async def bot_mailing(message: Message):
-    await message.answer('💭 Присылай сообщение для рассылки')
+    await message.answer('🤖 Присылай сообщение для рассылки')
     await Mailing.text.set()
 
 

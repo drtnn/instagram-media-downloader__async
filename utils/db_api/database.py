@@ -13,6 +13,7 @@ database = Gino()
 class User(database.Model):
     __tablename__ = 'users'
 
+    id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     user_id = Column(Integer, primary_key=True, unique=True)
     language = Column(String(2))
     first_name = Column(String(128))
@@ -60,8 +61,7 @@ class User(database.Model):
 
     @staticmethod
     async def count_users() -> int:
-        total = await database.func.count(User.id).gino.scalar()
-        return total
+        return await database.func.count(User.id).gino.scalar()
 
     def __repr__(self):
         return f'<User(id=\'{self.id}\', first_name=\'{self.first_name}\', username=\'{self.username}\')>'
