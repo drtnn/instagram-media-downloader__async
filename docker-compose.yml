@@ -10,15 +10,7 @@ services:
       - 5432:5432
     env_file:
       - ".env"
-#    network_mode: "host"
-
-  adminer:
-    container_name: adminer
-    image: adminer
-    restart: always
-    ports:
-      - 8080:8080
-#    network_mode: "host"
+    network_mode: "host"
 
   tgbot:
     container_name: bot
@@ -31,4 +23,3 @@ services:
 
     env_file:
       - ".env"
-
