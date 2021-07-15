@@ -17,7 +17,7 @@ async def instagram_user_handler(message: Message):
         data = await state.get_data()
         if 'chat_id' in data and 'message_id' in data:
             await bot.edit_message_reply_markup(chat_id=data['chat_id'], message_id=data['message_id'], reply_markup=user_keyboard(user.username, user.is_private, False))
-        await state.update_data(username=message.text, chat_id=user_message.chat.id, message_id=user_message.message_id)
+        await state.update_data(username=message.text.lower(), chat_id=user_message.chat.id, message_id=user_message.message_id)
         await InlineContent.post.set()
 
 
