@@ -48,7 +48,7 @@ async def smart_inline_media(medias: list):
                 media_type = meta['Content-Type'].split('/')[0]
                 result_id = f'{hash(content)}-{index}'
                 caption = f'<a href=\'https://www.instagram.com/{media.user.username}\'>{media.user.username}</a>: {media.caption}' if isinstance(
-                    media, InstagramPost) else None
+                    media, InstagramPost) and media.caption else None
                 if int(meta['Content-Length']) / 1024 / 1024 >= MAX_FILE_SIZE:
                     result.append(InlineQueryResultPhoto(id=result_id, photo_url=preview, thumb_url=preview,
                                                          title=f'📹 @{media.user.username}',
@@ -107,7 +107,7 @@ async def smart_send_media(bot: Bot, upload_client: UploadClient, chat_id: int, 
                     media_group = MediaGroup()
         try:
             await tmp_message.delete()
-        except MessageToDeleteNotFound:
+        except (MessageToDeleteNotFound, AttributeError):
             pass
 
 
