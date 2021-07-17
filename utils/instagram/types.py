@@ -49,6 +49,8 @@ async def smart_inline_media(medias: list):
                 result_id = f'{hash(content)}-{index}'
                 caption = f'<a href=\'https://www.instagram.com/{media.user.username}\'>{media.user.username}</a>: {media.caption}' if isinstance(
                     media, InstagramPost) and media.caption else None
+                if caption and len(caption) > 1020:
+                    caption = caption[:1020] + '…'
                 if int(meta['Content-Length']) / 1024 / 1024 >= MAX_FILE_SIZE:
                     result.append(InlineQueryResultPhoto(id=result_id, photo_url=preview, thumb_url=preview,
                                                          title=f'📹 @{media.user.username}',
