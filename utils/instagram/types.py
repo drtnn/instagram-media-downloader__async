@@ -101,7 +101,10 @@ async def smart_send_media(bot: Bot, upload_client: UploadClient, chat_id: int, 
                     media_group.attach_photo(output)
                 if len(media_group.media) == 10 or (not all_as_group and content is media.media[-1]) or (
                         all_as_group and media is medias[-1]):
-                    await ChatActions.upload_video()
+                    try:
+                        await ChatActions.upload_video()
+                    except AttributeError:
+                        pass
                     await bot.send_media_group(chat_id=chat_id, media=media_group)
                     if not all_as_group and isinstance(media, InstagramPost) and media.caption:
                         await bot.send_message(chat_id=chat_id,
@@ -240,7 +243,7 @@ class InstagramUser:
             self.stories = []
             if 'reels_media' in data and data['reels_media']:
                 for story_responsive in data['reels_media'][0]['items']:
-                    story = InstagramStory(user=self,
+                    story = InstagramStory(user=self, story_id=story_responsive['id'],
                                            media=[get_story_link(story_responsive)],
                                            preview=[story_responsive['image_versions2']['candidates'][0]['url']],
                                            size=[
@@ -390,13 +393,14 @@ class InstagramStory:
     __is_started = False
 
     def __init__(self, link: str = None, user: InstagramUser = None, swipe_link: str = None, media: list = None,
-                 preview: list = None, size: list = None):
+                 preview: list = None, size: list = None, story_id: str = None):
         self.link = link
         self.user = user
         self.swipe_link = swipe_link
         self.media = media
         self.preview = preview
         self.size = size
+        self.story_id = story_id
 
     async def start(self):  # Получить ссылку на историю
         self.__is_started = True
@@ -485,7 +489,8 @@ class InstagramHighlight:
             return
         self.user, self.media = await InstagramUser(username).start(), []
         for story_responsive in data[0]['items']:
-            story = InstagramStory(user=self.user, media=[get_story_link(story_responsive)],
+            story = InstagramStory(user=self.user, story_id=story_responsive['id'],
+                                   media=[get_story_link(story_responsive)],
                                    preview=story_responsive['image_versions2']['candidates'][0]['url'],
                                    size=[{'width': story_responsive['image_versions2']['candidates'][0]['width'],
                                           'height': story_responsive['image_versions2']['candidates'][0]['height']}])
