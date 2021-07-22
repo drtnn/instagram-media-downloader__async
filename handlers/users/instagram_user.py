@@ -3,9 +3,10 @@ from aiogram.dispatcher import FSMContext
 from aiogram.utils.exceptions import MessageToEditNotFound
 from loader import dp, bot, upload_client
 from keyboards.inline.callback_datas import stories_callback
-from keyboards.inline.instagram import user_keyboard
+from keyboards.inline.generate import user_keyboard
 from states.inline import InlineContent
 from utils.instagram import InstagramUser
+from utils.db_api.database import Subscription
 
 
 @dp.message_handler(instagram_user=True, state='*')
@@ -18,10 +19,15 @@ async def instagram_user_handler(message: Message):
         data = await state.get_data()
         if 'chat_id' in data and 'message_id' in data:
             try:
-                await bot.edit_message_reply_markup(chat_id=data['chat_id'], message_id=data['message_id'], reply_markup=user_keyboard(user.username, user.is_private, False))
+                await bot.edit_message_reply_markup(chat_id=data['chat_id'], message_id=data['message_id'],
+                                                    reply_markup=user_keyboard(data['username'], data['is_private'],
+                                                                               await Subscription.exists(
+                                                                                   data['chat_id'], data['username']),
+                                                                               False))
             except MessageToEditNotFound:
                 pass
-        await state.update_data(username=message.text.lower(), chat_id=user_message.chat.id, message_id=user_message.message_id)
+        await state.update_data(username=user.username, is_private=user.is_private, chat_id=user_message.chat.id,
+                                message_id=user_message.message_id)
         await InlineContent.post.set()
 
 

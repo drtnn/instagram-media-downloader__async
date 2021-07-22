@@ -12,7 +12,8 @@ from .instagram_query_result import inline_no_such_user, inline_no_actual_storie
     inline_no_actual_posts
 from io import BytesIO
 import json
-from keyboards.inline.instagram import user_keyboard, media_keyboard
+from keyboards.inline.generate import user_keyboard, media_keyboard
+from utils.db_api.database import Subscription
 from utils.upload_client import UploadClient
 from urllib.parse import urlparse, urlencode
 from urllib.request import urlopen
@@ -172,7 +173,7 @@ class InstagramUser:
             await self.start()
         if self and self.user_id:
             return await bot.send_photo(chat_id=chat_id, photo=self.profile_pic_url, caption=self.to_message(),
-                                        reply_markup=user_keyboard(self.username, self.is_private))
+                                        reply_markup=user_keyboard(self.username, self.is_private, await Subscription.exists(chat_id, self.username)))
         elif not self or not self.user_id:
             await bot.send_message(chat_id=chat_id, text='🛑 <b>Профиль не найден или не существует</b>')
 

@@ -9,13 +9,13 @@ from utils.set_bot_commands import set_default_commands
 
 
 async def on_startup(dispatcher):
-    # Устанавливаем дефолтные команды
-    await set_default_commands(dispatcher)
-
     await create_database()
     await upload_client.start()
     loop = asyncio.get_event_loop()
     loop.create_task(ScheduledParser(bot=bot, upload_client=upload_client).start())
+
+    # Устанавливаем дефолтные команды
+    await set_default_commands(dispatcher)
 
     # Уведомляет про запуск
     await on_startup_notify(dispatcher)
