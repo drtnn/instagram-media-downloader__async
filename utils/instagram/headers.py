@@ -1,5 +1,8 @@
-from data.config import COOKIE
+from data.config import CURRENT_DIR
+import json
 import random
+
+COOKIE = json.loads(open(CURRENT_DIR + 'utils/instagram/cookies.json', 'r').read())
 
 headers_agent_list = [
     "Mozilla/5.0 (Windows NT 5.1; rv:41.0) Gecko/20100101"

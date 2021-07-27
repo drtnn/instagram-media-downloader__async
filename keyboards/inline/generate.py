@@ -1,8 +1,9 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from .callback_datas import stories_callback, subscribe_callback, mutable_subscribe_callback
+from .callback_datas import stories_callback, subscribe_callback
+from utils.misc.invoice_data import duration_to_info
 
 
-def user_keyboard(username: str, is_private: bool, is_subscribed: bool, posts_button: bool = True):
+def user_keyboard(username: str, is_private: bool, posts_button: bool = True):
     keyboard = InlineKeyboardMarkup(row_width=1)
     instagram_link = InlineKeyboardButton(text='📸 Instagram', url=f'https://www.instagram.com/{username}')
     if not is_private:
@@ -13,10 +14,6 @@ def user_keyboard(username: str, is_private: bool, is_subscribed: bool, posts_bu
         else:
             keyboard.add(stories_button)
         keyboard.add(instagram_link)
-        if not is_subscribed:
-            subscribe_button = InlineKeyboardButton(text='💳 Подписаться',
-                                                    callback_data=subscribe_callback.new(username=username))
-            keyboard.add(subscribe_button)
     else:
         keyboard.add(instagram_link)
     return keyboard
@@ -35,11 +32,14 @@ def channel_keyboard(link: str):
     keyboard.add(channel_button)
     return keyboard
 
+
 def subscribe_keyboard():
-    keyboard = InlineKeyboardMarkup()
+    keyboard = InlineKeyboardMarkup(row_width=2)
     keyboard.row(
-        InlineKeyboardButton(text='3', callback_data=mutable_subscribe_callback.new(count=3)),
-        InlineKeyboardButton(text='5', callback_data=mutable_subscribe_callback.new(count=5)),
-        InlineKeyboardButton(text='10', callback_data=mutable_subscribe_callback.new(count=10)),
+        InlineKeyboardButton(text=f'💳 2 недели – {duration_to_info[14]["price"]}₽', callback_data=subscribe_callback.new(duration=14)),
+        InlineKeyboardButton(text=f'💸 1 месяц – {duration_to_info[30]["price"]}₽', callback_data=subscribe_callback.new(duration=30))
+    )
+    keyboard.add(
+        InlineKeyboardButton(text=f'💰 3 месяца – {duration_to_info[90]["price"]}₽', callback_data=subscribe_callback.new(duration=90))
     )
     return keyboard

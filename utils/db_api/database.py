@@ -86,63 +86,35 @@ class Purchase(database.Model):
         return f'<Purchase(id=\'{self.id}\', user_id=\'{self.user_id}\', amount=\'{self.amount}\')>'
 
 
-class ParsedStory(database.Model):
-    __tablename__ = 'parsed_stories'
-
-    id = Column(Integer, Sequence('parsed_stories_id_seq'), primary_key=True)
-    story_id = Column(String(32))
-    parsed_date = Column(DateTime)
-    query: sql.Select
-
-    _idx1 = Index('parsed_stories_id_index', 'id')
-    _idx2 = Index('parsed_stories_story_id_index', 'story_id')
-
-    def __init__(self, story_id: str = None):
-        super().__init__()
-        self.story_id, self.parsed_date = story_id, datetime.datetime.now()
-
-    def __repr__(self):
-        return f'<ParsedStory(story_id=\'{self.story_id}\', parsed_date=\'{self.parsed_date.strftime("%d:%m:Y %H:%M")}\')>'
-
-    @staticmethod
-    async def delete_before(date: datetime.datetime):
-        return await ParsedStory.delete.where(ParsedStory.parsed_date <= date).gino.status()
-
-
 class Subscriber(database.Model):
     __tablename__ = 'subscribers'
 
     id = Column(Integer, Sequence('subscribers_id_seq'), primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'))
-    subs_limit = Column(Integer)
+    ended_at = Column(DateTime)
     query: sql.Select
 
     _idx1 = Index('subscribers_id_index', 'id')
     _idx2 = Index('subscribers_user_id_index', 'user_id')
 
-    def __init__(self, user_id: int = None, subs_limit: int = None):
+    def __init__(self, user_id: int = None, ended_at: datetime.datetime = None):
         super().__init__()
-        self.user_id, self.subs_limit = user_id, subs_limit
-
-    async def add_subs(self, subs: int):
-        await self.update(subs_limit=self.subs_limit + subs).apply()
-
-    async def subscribe(self, username: str):
-        if self.user_id not in ADMINS:
-            await self.update(subs_limit=self.subs_limit - 1).apply()
-        subscription = Subscription(user_id=self.user_id, username_to_parse=username)
-        await subscription.create()
-        return subscription
+        self.user_id, self.ended_at = user_id, ended_at
 
     @staticmethod
-    async def add(user_id: int, subs: int):
-        subscriber = await Subscriber.query.where(Subscriber.user_id == user_id).gino.first()
-        if subscriber:
-            await subscriber.add_subs(subs)
+    async def add(user_id: int, duration: int):
+        subscriber = await Subscriber.get(user_id=user_id)
+        if subscriber and subscriber.is_actual():
+            await subscriber.update(ended_at=subscriber.ended_at + datetime.timedelta(duration)).apply()
+        elif subscriber:
+            await subscriber.update(ended_at=datetime.datetime.now() + datetime.timedelta(duration)).apply()
         else:
-            subscriber = Subscriber(user_id=user_id, subs_limit=subs)
+            subscriber = Subscriber(user_id=user_id, ended_at=datetime.datetime.now() + datetime.timedelta(duration))
             await subscriber.create()
         return subscriber
+
+    def is_actual(self):
+        return True if self.ended_at >= datetime.datetime.now() else False
 
     @staticmethod
     async def get(user_id: int):
@@ -150,44 +122,6 @@ class Subscriber(database.Model):
 
     def __repr__(self):
         return f'<Subscriber(user_id=\'{self.user_id}\', subs_limit=\'{self.limited_subs}\')>'
-
-
-class Subscription(database.Model):
-    __tablename__ = 'subscriptions'
-
-    id = Column(Integer, Sequence('subscriptions_id_seq'), primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.user_id'))
-    username_to_parse = Column(String())
-    created_date = Column(DateTime)
-    query: sql.Select
-
-    _idx1 = Index('subscriptions_id_index', 'id')
-    _idx2 = Index('subscriptions_user_id_index', 'user_id')
-    _idx3 = Index('subscriptions_created_date_index', 'created_date')
-
-    def __init__(self, user_id: int = None, username_to_parse: str = None):
-        super().__init__()
-        self.user_id, self.username_to_parse, self.created_date = user_id, username_to_parse, datetime.datetime.now()
-
-    def __repr__(self):
-        return f'<Subscription(user_id=\'{self.user_id}\', username_to_parse=\'{self.username_to_parse}\', created_date=\'{self.created_date.strftime("%d:%m:Y %H:%M")}\')>'
-
-    @staticmethod
-    async def get_actual_usernames():
-        return await Subscription.query.distinct(Subscription.username_to_parse).where(
-            Subscription.created_date >= datetime.datetime.now() - datetime.timedelta(30)).gino.all()
-
-    @staticmethod
-    async def get_user_ids(username: str):
-        return await Subscription.query.distinct(Subscription.username_to_parse).where(
-            and_(Subscription.created_date >= datetime.datetime.now() - datetime.timedelta(30),
-                 Subscription.username_to_parse == username)).gino.all()
-
-    @staticmethod
-    async def exists(user_id: int, username: str):
-        return True if await Subscription.query.where(
-            and_(Subscription.user_id == user_id, Subscription.username_to_parse == username,
-                 Subscription.created_date >= datetime.datetime.now() - datetime.timedelta(30))).gino.first() else False
 
 
 async def create_database():

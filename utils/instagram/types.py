@@ -13,7 +13,6 @@ from .instagram_query_result import inline_no_such_user, inline_no_actual_storie
 from io import BytesIO
 import json
 from keyboards.inline.generate import user_keyboard, media_keyboard
-from utils.db_api.database import Subscription
 from utils.upload_client import UploadClient
 from urllib.parse import urlparse, urlencode
 from urllib.request import urlopen
@@ -168,12 +167,12 @@ class InstagramUser:
             f'<i>{self.biography}</i>' if self.biography else '',
             sep='\n')
 
-    async def send_to(self, bot: Bot, chat_id: int):
+    async def send_to(self, bot: Bot, chat_id: int, posts_button: bool = True):
         if not self.__is_started:
             await self.start()
         if self and self.user_id:
             return await bot.send_photo(chat_id=chat_id, photo=self.profile_pic_url, caption=self.to_message(),
-                                        reply_markup=user_keyboard(self.username, self.is_private, await Subscription.exists(chat_id, self.username)))
+                                        reply_markup=user_keyboard(self.username, self.is_private, posts_button))
         elif not self or not self.user_id:
             await bot.send_message(chat_id=chat_id, text='🛑 <b>Профиль не найден или не существует</b>')
 

@@ -8,7 +8,6 @@ ADMINS = [int(user_id) for user_id in env.list('ADMINS')]
 BOT_TOKEN = env.str('BOT_TOKEN')
 PROVIDER_TOKEN = env.str('PROVIDER_TOKEN')
 BOT_NAME = env.str('BOT_NAME')
-COOKIE = env.list('COOKIE')
 
 DATABASE_URL = env.str('DATABASE_URL')
 DB_NAME = env.str('DB_NAME')
@@ -25,3 +24,6 @@ LOGFILE = CURRENT_DIR + 'instagram-bot.log'
 TELETHON_API_ID = env.int('API_ID')
 TELETHON_API_HASH = env.str('API_HASH')
 TELETHON_SESSION = env.str('SESSION')
+
+YOOMONEY_CLIENT_ID = env.str('YOOMONEY_CLIENT_ID')
+YOOMONEY_TOKEN = env.str('YOOMONEY_TOKEN')

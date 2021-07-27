@@ -6,6 +6,6 @@ from . import instagram_highlight
 from . import instagram_story
 from . import instagram_user
 from . import info
-from . import subscription
+from . import subscribe
 from . import referral
 from . import terms

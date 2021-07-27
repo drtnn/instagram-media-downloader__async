@@ -6,4 +6,4 @@ from loader import dp
 @dp.message_handler(commands=['referral'], state='*')
 async def referral_message_handler(message: Message):
     await message.answer(
-        text=f'🕵🏻‍♂️ Пригласи пользователя по своей реферальной ссылке и получи 1 бесплатную месячную подписку\nt.me/{BOT_NAME}?start={message.chat.id}')
+        text=f'🤖 Пригласи друга по своей реферальной ссылке и получи 3 дня бесплатной подписки\n<code>t.me/{BOT_NAME}?start={message.chat.id}</code>')

@@ -133,3 +133,4 @@ dmypy.json
 **/.DS_Store
 sessions/*.session
 sessions/*.session-journal
+**/cookies.json
