@@ -8,6 +8,6 @@ async def set_default_commands(dp):
             types.BotCommand("help", "Вывести справку"),
             types.BotCommand("referral", "Реферальная программа"),
             types.BotCommand("subscribe", "Приобрести подписку"),
-            types.BotCommand("terms", "Правила пользования"),
+            # types.BotCommand("terms", "Правила пользования"),
         ]
     )

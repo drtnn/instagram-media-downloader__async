@@ -1,9 +1,10 @@
 from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup
+from asyncpg.exceptions import ForeignKeyViolationError
 from gino import Gino
 from data.config import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, ADMINS
 import datetime
-from sqlalchemy import Column, Integer, String, Sequence, DateTime, ForeignKey, Index, and_
+from sqlalchemy import Column, Integer, String, Sequence, DateTime, ForeignKey, Index, and_, Float
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy import sql
 
@@ -45,7 +46,7 @@ class User(database.Model):
             await new_user.create()
             return new_user, False
         else:
-            old_user.update(first_name=first_name, username=username)
+            await old_user.update(first_name=first_name, username=username).apply()
             return old_user, True
 
     @staticmethod
@@ -72,15 +73,24 @@ class Purchase(database.Model):
 
     id = Column(Integer, Sequence('purc_id_seq'), primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'))
-    amount = Column(Integer)
+    amount = Column(Float)
     purchase_time = Column(DateTime, server_default='now()')
     query: sql.Select
 
     _idx = Index('purc_id_index', 'id')
 
-    def __init__(self, user_id: int = None, amount: int = None):
+    def __init__(self, user_id: int = None, amount: int = None,
+                 purchase_time: datetime.datetime = datetime.datetime.now()):
         super().__init__()
-        self.user_id, self.amount, self.purchase_time = user_id, amount, datetime.datetime.now()
+        self.user_id, self.amount, self.purchase_time = user_id, amount, purchase_time
+
+    async def payed(self):
+        await self.update(successful=True).apply()
+
+    @staticmethod
+    async def get(user_id: int, amount: int, purchase_time: datetime.datetime):
+        return await Purchase.query.where(and_(and_(Purchase.user_id == user_id, Purchase.amount == amount),
+                                               Purchase.purchase_time == purchase_time)).gino.first()
 
     def __repr__(self):
         return f'<Purchase(id=\'{self.id}\', user_id=\'{self.user_id}\', amount=\'{self.amount}\')>'
@@ -109,8 +119,13 @@ class Subscriber(database.Model):
         elif subscriber:
             await subscriber.update(ended_at=datetime.datetime.now() + datetime.timedelta(duration)).apply()
         else:
-            subscriber = Subscriber(user_id=user_id, ended_at=datetime.datetime.now() + datetime.timedelta(duration))
-            await subscriber.create()
+            try:
+                subscriber = Subscriber(user_id=user_id, ended_at=datetime.datetime.now() + datetime.timedelta(duration))
+                await subscriber.create()
+            except ForeignKeyViolationError:
+                await User.add_user(user_id=user_id)
+                subscriber = Subscriber(user_id=user_id, ended_at=datetime.datetime.now() + datetime.timedelta(duration))
+                await subscriber.create()
         return subscriber
 
     def is_actual(self):

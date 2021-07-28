@@ -8,4 +8,4 @@ from . import instagram_user
 from . import info
 from . import subscribe
 from . import referral
-from . import terms
+# from . import terms

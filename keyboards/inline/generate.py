@@ -1,6 +1,6 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from .callback_datas import stories_callback, subscribe_callback
-from utils.misc.invoice_data import duration_to_info
+from utils.payment.invoice_data import duration_to_info
 
 
 def user_keyboard(username: str, is_private: bool, posts_button: bool = True):
@@ -36,10 +36,22 @@ def channel_keyboard(link: str):
 def subscribe_keyboard():
     keyboard = InlineKeyboardMarkup(row_width=2)
     keyboard.row(
-        InlineKeyboardButton(text=f'💳 2 недели – {duration_to_info[14]["price"]}₽', callback_data=subscribe_callback.new(duration=14)),
-        InlineKeyboardButton(text=f'💸 1 месяц – {duration_to_info[30]["price"]}₽', callback_data=subscribe_callback.new(duration=30))
+        InlineKeyboardButton(text=f'💳 2 недели – {duration_to_info[14]["price"]}₽',
+                             callback_data=subscribe_callback.new(duration=14)),
+        InlineKeyboardButton(text=f'💸 1 месяц – {duration_to_info[30]["price"]}₽',
+                             callback_data=subscribe_callback.new(duration=30))
     )
     keyboard.add(
-        InlineKeyboardButton(text=f'💰 3 месяца – {duration_to_info[90]["price"]}₽', callback_data=subscribe_callback.new(duration=90))
+        InlineKeyboardButton(text=f'💰 3 месяца – {duration_to_info[90]["price"]}₽',
+                             callback_data=subscribe_callback.new(duration=90))
+    )
+    return keyboard
+
+
+def payment_keyboard(url: str, price: int):
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(
+        InlineKeyboardButton(text=f'💵 Оплатить {price}₽',
+                             url=url)
     )
     return keyboard
