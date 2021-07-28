@@ -84,8 +84,17 @@ class Purchase(database.Model):
         super().__init__()
         self.user_id, self.amount, self.purchase_time = user_id, amount, purchase_time
 
-    async def payed(self):
-        await self.update(successful=True).apply()
+    @staticmethod
+    async def add(user_id: int = None, amount: int = None,
+                  purchase_time: datetime.datetime = None):
+        try:
+            purc = Purchase(user_id, amount, purchase_time)
+            await purc.create()
+        except ForeignKeyViolationError:
+            await User.add_user(user_id=user_id)
+            purc = Purchase(user_id, amount, purchase_time)
+            await purc.create()
+        return purc
 
     @staticmethod
     async def get(user_id: int, amount: int, purchase_time: datetime.datetime):
@@ -120,11 +129,13 @@ class Subscriber(database.Model):
             await subscriber.update(ended_at=datetime.datetime.now() + datetime.timedelta(duration)).apply()
         else:
             try:
-                subscriber = Subscriber(user_id=user_id, ended_at=datetime.datetime.now() + datetime.timedelta(duration))
+                subscriber = Subscriber(user_id=user_id,
+                                        ended_at=datetime.datetime.now() + datetime.timedelta(duration))
                 await subscriber.create()
             except ForeignKeyViolationError:
                 await User.add_user(user_id=user_id)
-                subscriber = Subscriber(user_id=user_id, ended_at=datetime.datetime.now() + datetime.timedelta(duration))
+                subscriber = Subscriber(user_id=user_id,
+                                        ended_at=datetime.datetime.now() + datetime.timedelta(duration))
                 await subscriber.create()
         return subscriber
 

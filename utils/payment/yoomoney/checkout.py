@@ -22,11 +22,7 @@ async def checkout():
                 purc = await Purchase.get(user_id=int(operation_data[0]), amount=operation.amount,
                                           purchase_time=operation.datetime)
                 if not purc:
-                    try:
-                        await Purchase(user_id=int(operation_data[0]), amount=operation.amount,
-                                       purchase_time=operation.datetime).create()
-                    except ForeignKeyViolationError:
-                        continue
+                    await Purchase.add(user_id=int(operation_data[0]), amount=operation.amount, purchase_time=operation.datetime)
                     subscriber = await Subscriber.add(user_id=int(operation_data[0]), duration=int(operation_data[1]))
                     await bot.send_message(chat_id=int(operation_data[0]),
                                            text=f'🤖 Подписка успешно оформлена и будет активна до <pre>{subscriber.ended_at.strftime("%d.%m.%Y")}</pre>')
