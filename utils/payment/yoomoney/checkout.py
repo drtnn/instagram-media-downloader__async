@@ -1,5 +1,4 @@
 import asyncio
-from asyncpg.exceptions import ForeignKeyViolationError
 from data.config import YOOMONEY_TOKEN
 import datetime
 from loader import bot

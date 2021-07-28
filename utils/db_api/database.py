@@ -1,8 +1,9 @@
 from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup
+from aiogram.utils.exceptions import BotBlocked
 from asyncpg.exceptions import ForeignKeyViolationError
 from gino import Gino
-from data.config import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, ADMINS
+from data.config import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
 import datetime
 from sqlalchemy import Column, Integer, String, Sequence, DateTime, ForeignKey, Index, and_, Float
 from sqlalchemy.exc import InvalidRequestError
@@ -56,7 +57,7 @@ class User(database.Model):
             try:
                 await bot.send_message(chat_id=user.user_id, text=text, reply_markup=keyboard)
                 count_users += 1
-            except:
+            except BotBlocked:
                 pass
         return count_users
 
@@ -147,7 +148,7 @@ class Subscriber(database.Model):
         return await Subscriber.query.where(Subscriber.user_id == user_id).gino.first()
 
     def __repr__(self):
-        return f'<Subscriber(user_id=\'{self.user_id}\', subs_limit=\'{self.limited_subs}\')>'
+        return f'<Subscriber(user_id=\'{self.user_id}\', ended_at=\'{self.ended_at.strftime("%d.%m.%Y")}\')>'
 
 
 async def create_database():
