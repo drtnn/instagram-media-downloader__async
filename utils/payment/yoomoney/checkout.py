@@ -6,7 +6,7 @@ from utils.db_api.database import Purchase, Subscriber
 from .client import Client
 
 
-async def checkout():
+async def checkout(to_sleep: int = 10):
     client = Client(YOOMONEY_TOKEN)
     date = None
     while True:
@@ -25,4 +25,4 @@ async def checkout():
                     subscriber = await Subscriber.add(user_id=int(operation_data[0]), duration=int(operation_data[1]))
                     await bot.send_message(chat_id=int(operation_data[0]),
                                            text=f'🤖 Подписка успешно оформлена и будет активна до <pre>{subscriber.ended_at.strftime("%d.%m.%Y")}</pre>')
-        await asyncio.sleep(10)
+        await asyncio.sleep(to_sleep)

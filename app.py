@@ -20,5 +20,5 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     loop.run_until_complete(create_database())
     loop.run_until_complete(upload_client.start())
-    loop.create_task(checkout())
+    loop.create_task(checkout(to_sleep=10))
     executor.start_polling(dp, on_startup=on_startup, on_shutdown=on_shutdown_notify)

@@ -1,7 +1,7 @@
 from aiogram.types import Message
 from aiogram.dispatcher import FSMContext
 from loader import dp, bot
-from states.mailing import Mailing
+from states.admin import Mailing
 from utils.db_api.database import User
 
 

@@ -1,7 +1,6 @@
 from aiogram.types import Message, CallbackQuery, InlineQuery
 from aiogram.dispatcher import FSMContext
 from aiogram.utils.exceptions import MessageToEditNotFound
-from keyboards.inline.generate import subscribe_keyboard
 from loader import dp, bot, upload_client
 from keyboards.inline.callback_datas import stories_callback
 from keyboards.inline.generate import user_keyboard
@@ -30,25 +29,11 @@ async def instagram_user_handler(message: Message):
         await InlineContent.post.set()
 
 
-@dp.message_handler(instagram_user=True, state='*')
-async def not_instagram_user_handler(message: Message):
-    user = InstagramUser(message.text.lower())
-    await user.start()
-    await user.send_to(bot=bot, chat_id=message.chat.id, posts_button=False)
-
-
 @dp.callback_query_handler(stories_callback.filter(), is_subscriber=True, state='*')
 async def instagram_stories_callback_query_handler(call: CallbackQuery, callback_data: dict):
     user = InstagramUser(callback_data['username'])
     await user.start()
     await user.send_stories_to(bot=bot, upload_client=upload_client, chat_id=call.from_user.id, call=call)
-
-
-@dp.callback_query_handler(stories_callback.filter(), state='*')
-async def not_instagram_stories_callback_query_handler(call: CallbackQuery, callback_data: dict):
-    await bot.send_message(chat_id=call.from_user.id,
-                           text='🤖 Подключи подписку и скачивай контент из <pre>Instagram</pre> анонимно и без ограничений\nХочешь пользоваться ботом бесплатно? /referral\nХочешь подключить подписку? Кликай на кнопку ниже!',
-                           reply_markup=subscribe_keyboard())
 
 
 @dp.inline_handler(is_subscriber=True, text='', state=InlineContent.post)

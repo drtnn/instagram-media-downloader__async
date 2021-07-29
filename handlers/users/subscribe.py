@@ -1,9 +1,9 @@
-from aiogram.types import Message, CallbackQuery, PreCheckoutQuery
+from aiogram.types import Message, CallbackQuery
 from loader import dp, bot
 from keyboards.inline.callback_datas import subscribe_callback
 from keyboards.inline.generate import subscribe_keyboard, payment_keyboard
-from utils.db_api.database import Subscriber, Purchase
-from utils.payment.invoice_data import get_invoice_data, duration_to_info
+from utils.db_api.database import Subscriber
+from utils.payment.invoice_data import get_invoice_data
 from utils.payment.yoomoney.quickpay import payment_link
 
 
@@ -12,11 +12,11 @@ async def subscribe_message_handler(message: Message):
     subscriber = await Subscriber.add(user_id=message.chat.id, duration=0)
     if subscriber.is_actual():
         await message.answer(
-            text=f'🤖 Твоя подписка действует до <pre>{subscriber.ended_at.strftime("%d.%m.%Y")}</pre>\nХочешь продлить подписку? Кликай на кнопку ниже!',
+            text=f'🤖 Твоя подписка действует до <pre>{subscriber.ended_at.strftime("%d.%m.%Y")}</pre>',
             reply_markup=subscribe_keyboard())
     else:
         await message.answer(
-            text='🤖 Подписка дает возможность удобно скачивать любой контент из <pre>Instagram</pre>\nХочешь пользоваться ботом бесплатно? /referral\nХочешь подключить подписку? Кликай на кнопку ниже!',
+            text='🤖 Подписка дает возможность удобно скачивать любой контент из <pre>Instagram</pre>',
             reply_markup=subscribe_keyboard())
 
 

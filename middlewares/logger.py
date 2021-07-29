@@ -1,4 +1,3 @@
-from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from data.config import LOGFILE
 import logging
 import os
