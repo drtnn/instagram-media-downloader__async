@@ -8,7 +8,7 @@ duration_to_info = {
 }
 
 
-def get_invoice_data(user_id: int, duration: int):
+async def get_invoice_data(user_id: int, duration: int):
     subscriber = await Subscriber.add(user_id=user_id, duration=0)
     ended_at = subscriber.ended_at + timedelta(duration)
     return {

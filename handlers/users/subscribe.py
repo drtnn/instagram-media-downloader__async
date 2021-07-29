@@ -23,7 +23,7 @@ async def subscribe_message_handler(message: Message):
 @dp.callback_query_handler(subscribe_callback.filter(), state='*')
 async def subscribe_callback_query_handler(call: CallbackQuery, callback_data: dict):
     duration = int(callback_data['duration'])
-    invoice_data = get_invoice_data(user_id=call.from_user.id, duration=duration)
+    invoice_data = await get_invoice_data(user_id=call.from_user.id, duration=duration)
     redirected_url = await payment_link(targets=invoice_data['title'], price=invoice_data['price'],
                                         label=invoice_data['label'])
     await bot.send_message(chat_id=call.from_user.id,
