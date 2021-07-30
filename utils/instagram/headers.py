@@ -42,26 +42,28 @@ def post_headers(referer: str = None):
     }
     if referer:
         headers_classic['referer'] = referer
-    return headers_classic, cookie['username']
+    # return headers_classic, cookie['username']
+    return headers_classic
 
 
 def story_headers():
     cookie = random.choice(COOKIE)
     return {
-               'authority': 'i.instagram.com',
-               'pragma': 'no-cache',
-               'cache-control': 'no-cache',
-               'sec-ch-ua': '"Chromium";v="88", "Google Chrome";v="88", ";Not A Brand";v="99"',
-               'accept': '*/*',
-               'x-ig-www-claim': 'hmac.AR2OIZnV3Xot5AT_boqr-HjjPl9BObBv1RN7LCdlgdQflWk1',
-               'sec-ch-ua-mobile': '?0',
-               'user-agent': random.choice(headers_agent_list),
-               'x-ig-app-id': '936619743392459',
-               'origin': 'https://www.instagram.com',
-               'sec-fetch-site': 'same-site',
-               'sec-fetch-mode': 'cors',
-               'sec-fetch-dest': 'empty',
-               'referer': 'https://www.instagram.com/',
-               'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-               'cookie': cookie['cookie'],
-           }, cookie['username']
+        'authority': 'i.instagram.com',
+        'pragma': 'no-cache',
+        'cache-control': 'no-cache',
+        'sec-ch-ua': '"Chromium";v="88", "Google Chrome";v="88", ";Not A Brand";v="99"',
+        'accept': '*/*',
+        'x-ig-www-claim': 'hmac.AR2OIZnV3Xot5AT_boqr-HjjPl9BObBv1RN7LCdlgdQflWk1',
+        'sec-ch-ua-mobile': '?0',
+        'user-agent': random.choice(headers_agent_list),
+        'x-ig-app-id': '936619743392459',
+        'origin': 'https://www.instagram.com',
+        'sec-fetch-site': 'same-site',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-dest': 'empty',
+        'referer': 'https://www.instagram.com/',
+        'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+        'cookie': cookie['cookie'],
+    }
+    # , cookie['username']

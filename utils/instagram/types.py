@@ -20,13 +20,6 @@ from urllib.request import urlopen
 MAX_FILE_SIZE = 9.9
 
 
-async def get_data(url: str, is_post: bool, referer: str = None):
-    client = AsyncClient()
-    for _ in range(2):
-        headers: tuple = post_headers(referer=referer) if is_post else story_headers()
-        responsive = await client.get(url=url, headers=headers[0])
-
-
 def get_post_link(data: dict):  # Получить ссылку на фото/видео из JSON
     return data['video_url'] if data['is_video'] else data['display_url']
 
