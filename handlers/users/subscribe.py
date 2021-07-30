@@ -20,6 +20,19 @@ async def subscribe_message_handler(message: Message):
             reply_markup=subscribe_keyboard())
 
 
+@dp.message_handler(text='💲 Подписка', state='*')
+async def subscribe_message_handler(message: Message):
+    subscriber = await Subscriber.add(user_id=message.chat.id, duration=0)
+    if subscriber.is_actual():
+        await message.answer(
+            text=f'🤖 Твоя подписка действует до <pre>{subscriber.ended_at.strftime("%d.%m.%Y")}</pre>',
+            reply_markup=subscribe_keyboard())
+    else:
+        await message.answer(
+            text='🤖 Подписка дает возможность удобно скачивать любой контент из <pre>Instagram</pre>',
+            reply_markup=subscribe_keyboard())
+
+
 @dp.callback_query_handler(subscribe_callback.filter(), state='*')
 async def subscribe_callback_query_handler(call: CallbackQuery, callback_data: dict):
     duration = int(callback_data['duration'])

@@ -1,5 +1,6 @@
 from aiogram.types import Message
 from aiogram.dispatcher.filters.builtin import CommandStart
+from keyboards.default.generate import default_keyboard
 from keyboards.inline.generate import channel_keyboard
 from loader import dp, bot
 from random import randint
@@ -24,4 +25,5 @@ async def bot_start(message: Message):
     await message.answer(
         text='🙋🏻‍♂️ Привет, я бот для скачивания публикаций из <pre>Instagram</pre>.\n\n🔗 Просто отправь ссылку на пост, историю, хайлайт или никнейм.\n\n💬 Информация по всем функциям бота доступна по команде /help' + (
             f'\n\n🤖 Подписка активна до <pre>{subscriber.ended_at.strftime("%d.%m.%Y")}</pre>.' if subscriber.is_actual() else ''),
-        reply_markup=channel_keyboard(link='https://t.me/InstaMediaDownload'))
+        reply_markup=default_keyboard)
+    await message.answer(text='Подписывайся на <pre>ТГК Скачать с Instagram</pre> и узнавай обо всех обновлениях первым!', reply_markup=channel_keyboard(link='https://t.me/InstaMediaDownload'))

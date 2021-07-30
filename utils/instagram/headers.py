@@ -20,7 +20,8 @@ headers_agent_list = [
 ]
 
 
-def headers(referer: str = None):
+def post_headers(referer: str = None):
+    cookie = random.choice(COOKIE)
     headers_classic = {
         'authority': 'www.instagram.com',
         'pragma': 'no-cache',
@@ -37,29 +38,30 @@ def headers(referer: str = None):
         'sec-fetch-mode': 'cors',
         'sec-fetch-dest': 'empty',
         'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-        'cookie': random.choice(COOKIE),
+        'cookie': cookie['cookie']
     }
     if referer:
         headers_classic['referer'] = referer
-    return headers_classic
+    return headers_classic, cookie['username']
 
 
-def headers_stories():
+def story_headers():
+    cookie = random.choice(COOKIE)
     return {
-        'authority': 'i.instagram.com',
-        'pragma': 'no-cache',
-        'cache-control': 'no-cache',
-        'sec-ch-ua': '"Chromium";v="88", "Google Chrome";v="88", ";Not A Brand";v="99"',
-        'accept': '*/*',
-        'x-ig-www-claim': 'hmac.AR2OIZnV3Xot5AT_boqr-HjjPl9BObBv1RN7LCdlgdQflWk1',
-        'sec-ch-ua-mobile': '?0',
-        'user-agent': random.choice(headers_agent_list),
-        'x-ig-app-id': '936619743392459',
-        'origin': 'https://www.instagram.com',
-        'sec-fetch-site': 'same-site',
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-dest': 'empty',
-        'referer': 'https://www.instagram.com/',
-        'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-        'cookie': random.choice(COOKIE),
-    }
+               'authority': 'i.instagram.com',
+               'pragma': 'no-cache',
+               'cache-control': 'no-cache',
+               'sec-ch-ua': '"Chromium";v="88", "Google Chrome";v="88", ";Not A Brand";v="99"',
+               'accept': '*/*',
+               'x-ig-www-claim': 'hmac.AR2OIZnV3Xot5AT_boqr-HjjPl9BObBv1RN7LCdlgdQflWk1',
+               'sec-ch-ua-mobile': '?0',
+               'user-agent': random.choice(headers_agent_list),
+               'x-ig-app-id': '936619743392459',
+               'origin': 'https://www.instagram.com',
+               'sec-fetch-site': 'same-site',
+               'sec-fetch-mode': 'cors',
+               'sec-fetch-dest': 'empty',
+               'referer': 'https://www.instagram.com/',
+               'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+               'cookie': cookie['cookie'],
+           }, cookie['username']

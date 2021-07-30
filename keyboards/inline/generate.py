@@ -28,7 +28,7 @@ def media_keyboard(link: str):
 
 def channel_keyboard(link: str):
     keyboard = InlineKeyboardMarkup()
-    channel_button = InlineKeyboardButton(text='📎 Подписывайся', url=link)
+    channel_button = InlineKeyboardButton(text='📎 Подписаться', url=link)
     keyboard.add(channel_button)
     return keyboard
 

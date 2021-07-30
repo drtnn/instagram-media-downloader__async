@@ -5,7 +5,7 @@ from aiogram.types import MediaGroup, ChatActions, CallbackQuery, InlineQuery, I
 from aiogram.utils.markdown import text
 from bs4 import BeautifulSoup
 from data.config import BOT_NAME
-from .headers import headers, headers_stories
+from .headers import post_headers, story_headers
 from http3 import AsyncClient
 from http3.exceptions import InvalidURL
 from .instagram_query_result import inline_no_such_user, inline_no_actual_stories, inline_no_such_media, \
@@ -18,6 +18,13 @@ from urllib.parse import urlparse, urlencode
 from urllib.request import urlopen
 
 MAX_FILE_SIZE = 9.9
+
+
+async def get_data(url: str, is_post: bool, referer: str = None):
+    client = AsyncClient()
+    for _ in range(2):
+        headers: tuple = post_headers(referer=referer) if is_post else story_headers()
+        responsive = await client.get(url=url, headers=headers[0])
 
 
 def get_post_link(data: dict):  # Получить ссылку на фото/видео из JSON
@@ -140,7 +147,7 @@ class InstagramUser:
         if 'instagram.com' in self.username:
             self.username = self.__set_username_from_link()
         client = AsyncClient()
-        result = await client.get(url=f'https://www.instagram.com/{self.username}/?__a=1', headers=headers())
+        result = await client.get(url=f'https://www.instagram.com/{self.username}/?__a=1', headers=post_headers())
         try:
             data = json.loads(result.text)
             user = data['graphql']['user']
@@ -160,9 +167,9 @@ class InstagramUser:
     def to_message(self):
         return text(
             f'{"🔒" if self.is_private else "👤"} <a href="https://www.instagram.com/{self.username}/">{self.username}</a>',
-            f'📷 Количество постов – <b>{self.posts_count}</b>' if self.posts_count else '',
-            f'📥 Количество подписчиков – <b>{self.followers}</b>' if self.followers else '',
-            f'📤 Количество подписок – <b>{self.followings}</b>\n' if self.followings else '\n',
+            f'📷 Количество постов – <b>{self.posts_count}</b>' if self.posts_count is not None else '',
+            f'📥 Количество подписчиков – <b>{self.followers}</b>' if self.followers is not None else '',
+            f'📤 Количество подписок – <b>{self.followings}</b>\n' if self.followings is not None else '\n',
             f'<b>{self.full_name}</b>' if self.full_name and self.biography else '',
             f'<i>{self.biography}</i>' if self.biography else '',
             sep='\n')
@@ -235,7 +242,7 @@ class InstagramUser:
         elif self and self.user_id and not self.is_private:
             client = AsyncClient()
             url = f'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids={self.user_id}'
-            result = await client.get(url=url, headers=headers_stories())
+            result = await client.get(url=url, headers=story_headers())
             try:
                 data = json.loads(result.text)
             except ValueError:
@@ -266,7 +273,7 @@ class InstagramUser:
         elif self and self.user_id and not self.is_private and self.posts_count:
             client = AsyncClient()
             url = f'https://instagram.com/{self.username}'
-            result = await client.get(url=url, headers=headers(referer=url))
+            result = await client.get(url=url, headers=post_headers(referer=url))
             soup = BeautifulSoup(result.text, 'lxml')
             shared_data = None
             for script in soup.select('script'):
@@ -330,7 +337,7 @@ class InstagramPost:
         url = 'https://www.instagram.com/graphql/query/?' + urlencode({'query_hash': '2c4c2e343a8f64c625ba02b2aa12c7f8',
                                                                        'variables': f'{{"shortcode":"{shortcode_id}","has_threaded_comments":true}}'})
         client = AsyncClient()
-        result = await client.get(url, headers=headers(referer=self.link))
+        result = await client.get(url, headers=post_headers(referer=self.link))
         try:
             data = json.loads(result.text)['data']
             username = data['shortcode_media']['owner']['username']
@@ -409,7 +416,7 @@ class InstagramStory:
             return
         url = f'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids={self.user.user_id}'
         client = AsyncClient()
-        result = await client.get(url, headers=headers_stories())
+        result = await client.get(url, headers=story_headers())
         try:
             data = json.loads(result.text)['reels_media']
         except (ValueError, KeyError, TypeError, IndexError):
@@ -481,7 +488,7 @@ class InstagramHighlight:
             return
         url = f'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids=highlight%3A{self.highlight_id}'
         client = AsyncClient()
-        result = await client.get(url, headers=headers_stories())
+        result = await client.get(url, headers=story_headers())
         try:
             data = json.loads(result.text)['reels_media']
             username = data[0]['user']['username']
@@ -536,10 +543,10 @@ class InstagramHighlight:
         else:
             client = AsyncClient()
             try:
-                result = await client.get(url=self.link, headers=headers_stories())
+                result = await client.get(url=self.link, headers=story_headers())
                 for data in result.history:
                     if data.is_redirect:
-                        link = urlparse(data.headers.raw[1][1].decode('utf-8'))[2].split('/')
+                        link = urlparse(data.post_headers.raw[1][1].decode('utf-8'))[2].split('/')
                         self.highlight_id = link[link.index('highlights') + 1] if 'highlights' in link else None
             except (ValueError, KeyError, TypeError, IndexError, InvalidURL):
                 return
