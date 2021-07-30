@@ -26,4 +26,4 @@ async def bot_start(message: Message):
         text='🙋🏻‍♂️ Привет, я бот для скачивания публикаций из <pre>Instagram</pre>.\n\n🔗 Просто отправь ссылку на пост, историю, хайлайт или никнейм.\n\n💬 Информация по всем функциям бота доступна по команде /help' + (
             f'\n\n🤖 Подписка активна до <pre>{subscriber.ended_at.strftime("%d.%m.%Y")}</pre>.' if subscriber.is_actual() else ''),
         reply_markup=default_keyboard)
-    await message.answer(text='Подписывайся на <pre>ТГК Скачать с Instagram</pre> и узнавай обо всех обновлениях первым!', reply_markup=channel_keyboard(link='https://t.me/InstaMediaDownload'))
+    await message.answer(text='🗣 Подписывайся на <a href="https://t.me/InstaMediaDownload"><b>ТГК Скачать с Instagram</b></a> и узнавай обо всех обновлениях первым!', reply_markup=channel_keyboard(link='https://t.me/InstaMediaDownload'))
