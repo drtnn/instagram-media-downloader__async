@@ -510,7 +510,7 @@ class InstagramHighlight:
         if not self.__is_started:
             await self.start()
         if self.user and self.user.user_id and self.media:
-            await smart_send_media(bot, upload_client, chat_id, self.media)
+            await smart_send_media(bot, upload_client, chat_id, self.media, True)
         elif not self.user or not self.user.user_id:
             if call:
                 await call.answer(text='🛑 Неверная ссылка', show_alert=True)
@@ -539,7 +539,7 @@ class InstagramHighlight:
                 result = await client.get(url=self.link, headers=story_headers())
                 for data in result.history:
                     if data.is_redirect:
-                        link = urlparse(data.post_headers.raw[1][1].decode('utf-8'))[2].split('/')
+                        link = urlparse(data.headers.raw[1][1].decode('utf-8'))[2].split('/')
                         self.highlight_id = link[link.index('highlights') + 1] if 'highlights' in link else None
             except (ValueError, KeyError, TypeError, IndexError, InvalidURL):
                 return
