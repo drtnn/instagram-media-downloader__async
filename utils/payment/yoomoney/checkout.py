@@ -34,7 +34,7 @@ async def checkout(to_sleep: int = 10):
                         await bot.send_message(chat_id=int(operation_data[0]),
                                                text=f'🤖 Подписка успешно оформлена и будет активна до <pre>{subscriber.ended_at.strftime("%d.%m.%Y")}</pre>')
                         await bot.send_message(chat_id=ADMINS[0],
-                                               text=f'💸 +{operation.amount}₽\n🤖 Подписка  успешно оформлена')
+                                               text=f'💸 +{operation.amount}₽\n🤖 Подписка успешно оформлена')
                     except:
                         pass
         await asyncio.sleep(to_sleep)
