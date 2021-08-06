@@ -1,5 +1,5 @@
 import asyncio
-from data.config import YOOMONEY_TOKEN
+from data.config import YOOMONEY_TOKEN, ADMINS
 import datetime
 from loader import bot
 from utils.db_api.database import Purchase, Subscriber
@@ -11,9 +11,15 @@ async def checkout(to_sleep: int = 10):
     date = None
     while True:
         if date:
-            history = await client.operation_history(from_date=date - datetime.timedelta(hours=12))
+            try:
+                history = await client.operation_history(from_date=date - datetime.timedelta(hours=12))
+            except:
+                continue
         else:
-            history = await client.operation_history()
+            try:
+                history = await client.operation_history()
+            except:
+                continue
         date = datetime.datetime.now()
         for operation in history.operations:
             operation_data = operation.label.split(':') if operation.label else None
@@ -21,8 +27,14 @@ async def checkout(to_sleep: int = 10):
                 purc = await Purchase.get(user_id=int(operation_data[0]), amount=operation.amount,
                                           purchase_time=operation.datetime)
                 if not purc:
-                    await Purchase.add(user_id=int(operation_data[0]), amount=operation.amount, purchase_time=operation.datetime)
+                    await Purchase.add(user_id=int(operation_data[0]), amount=operation.amount,
+                                       purchase_time=operation.datetime)
                     subscriber = await Subscriber.add(user_id=int(operation_data[0]), duration=int(operation_data[1]))
-                    await bot.send_message(chat_id=int(operation_data[0]),
-                                           text=f'🤖 Подписка успешно оформлена и будет активна до <pre>{subscriber.ended_at.strftime("%d.%m.%Y")}</pre>')
+                    try:
+                        await bot.send_message(chat_id=int(operation_data[0]),
+                                               text=f'🤖 Подписка успешно оформлена и будет активна до <pre>{subscriber.ended_at.strftime("%d.%m.%Y")}</pre>')
+                        await bot.send_message(chat_id=ADMINS[0],
+                                               text=f'💸 +{operation.amount}₽\n🤖 Подписка  успешно оформлена')
+                    except:
+                        pass
         await asyncio.sleep(to_sleep)

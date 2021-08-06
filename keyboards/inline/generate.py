@@ -1,5 +1,6 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from .callback_datas import stories_callback, subscribe_callback
+from data.config import BOT_NAME
 from utils.payment.invoice_data import duration_to_info
 
 
@@ -53,5 +54,14 @@ def payment_keyboard(url: str, price: int):
     keyboard.add(
         InlineKeyboardButton(text=f'💵 Оплатить {price}₽',
                              url=url)
+    )
+    return keyboard
+
+
+def giveaway_keyboard(giveaway_id: str):
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(
+        InlineKeyboardButton(text='✔️ Участвовать',
+                             url=f't.me/{BOT_NAME}?start=giveaway_{giveaway_id}')
     )
     return keyboard

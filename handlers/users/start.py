@@ -4,7 +4,8 @@ from keyboards.default.generate import default_keyboard
 from keyboards.inline.generate import channel_keyboard
 from loader import dp, bot
 from random import randint
-from utils.db_api.database import User, Subscriber
+from re import fullmatch
+from utils.db_api.database import User, Subscriber, GiveawayUser
 
 
 @dp.message_handler(CommandStart(), state='*')
@@ -24,6 +25,13 @@ async def bot_start(message: Message):
                                text=f'🤖 +3 дня подписки за присоединение пользователя {message.from_user.first_name}')
     await message.answer(
         text='🙋🏻‍♂️ Привет, я бот для скачивания публикаций из <pre>Instagram</pre>.\n\n🔗 Просто отправь ссылку на пост, историю, хайлайт или никнейм.\n\n💬 Информация по всем функциям бота доступна по команде /help' + (
-            f'\n\n🤖 Подписка активна до <pre>{subscriber.ended_at.strftime("%d.%m.%Y")}</pre>.' if subscriber.is_actual() else ''),
+            f'\n\n🤖 Подписка активна до <pre>{subscriber.ended_at.strftime("%d.%m.%Y")}</pre>.\n\n🗣 Подписывайся на <a href="https://t.me/InstaMediaDownload"><b>ТГК Скачать с Instagram</b></a> и узнавай обо всех обновлениях первым!' if subscriber.is_actual() else ''),
         reply_markup=default_keyboard)
-    await message.answer(text='🗣 Подписывайся на <a href="https://t.me/InstaMediaDownload"><b>ТГК Скачать с Instagram</b></a> и узнавай обо всех обновлениях первым!', reply_markup=channel_keyboard(link='https://t.me/InstaMediaDownload'))
+
+    if fullmatch(r'giveaway_\d{1,2}', arguments):
+        result = await GiveawayUser.add(user_id=message.from_user.id, giveaway_id=int(arguments.replace('giveaway_', '')))
+        if result is not None:
+            if result[1]:
+                await message.answer('🎉 Ты уже учавствуешь в розыгрыше!')
+            else:
+                await message.answer('✅ Подтверждаю участие, жди результаты совсем скоро!')
