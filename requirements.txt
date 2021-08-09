@@ -10,6 +10,7 @@ bs4==0.0.1
 certifi==2021.5.30
 cffi==1.14.5
 chardet==3.0.4
+charset-normalizer==2.0.3
 click==8.0.1
 cryptg==0.2.post4
 environs==8.0.0

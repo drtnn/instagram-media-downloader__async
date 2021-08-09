@@ -1,5 +1,8 @@
-from data.config import COOKIE
+from data.config import CURRENT_DIR
+import json
 import random
+
+COOKIE = json.loads(open(CURRENT_DIR + 'utils/instagram/cookies.json', 'r').read())
 
 headers_agent_list = [
     "Mozilla/5.0 (Windows NT 5.1; rv:41.0) Gecko/20100101"
@@ -17,7 +20,8 @@ headers_agent_list = [
 ]
 
 
-def headers(referer: str = None):
+def post_headers(referer: str = None):
+    cookie = random.choice(COOKIE)
     headers_classic = {
         'authority': 'www.instagram.com',
         'pragma': 'no-cache',
@@ -34,14 +38,16 @@ def headers(referer: str = None):
         'sec-fetch-mode': 'cors',
         'sec-fetch-dest': 'empty',
         'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-        'cookie': random.choice(COOKIE),
+        'cookie': cookie['cookie']
     }
     if referer:
         headers_classic['referer'] = referer
+    # return headers_classic, cookie['username']
     return headers_classic
 
 
-def headers_stories():
+def story_headers():
+    cookie = random.choice(COOKIE)
     return {
         'authority': 'i.instagram.com',
         'pragma': 'no-cache',
@@ -58,5 +64,6 @@ def headers_stories():
         'sec-fetch-dest': 'empty',
         'referer': 'https://www.instagram.com/',
         'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-        'cookie': random.choice(COOKIE),
+        'cookie': cookie['cookie'],
     }
+    # , cookie['username']

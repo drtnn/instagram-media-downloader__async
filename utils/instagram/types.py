@@ -5,14 +5,14 @@ from aiogram.types import MediaGroup, ChatActions, CallbackQuery, InlineQuery, I
 from aiogram.utils.markdown import text
 from bs4 import BeautifulSoup
 from data.config import BOT_NAME
-from .headers import headers, headers_stories
+from .headers import post_headers, story_headers
 from http3 import AsyncClient
 from http3.exceptions import InvalidURL
 from .instagram_query_result import inline_no_such_user, inline_no_actual_stories, inline_no_such_media, \
     inline_no_actual_posts
 from io import BytesIO
 import json
-from keyboards.inline.instagram import user_keyboard, media_keyboard
+from keyboards.inline.generate import user_keyboard, media_keyboard
 from utils.upload_client import UploadClient
 from urllib.parse import urlparse, urlencode
 from urllib.request import urlopen
@@ -101,7 +101,10 @@ async def smart_send_media(bot: Bot, upload_client: UploadClient, chat_id: int, 
                     media_group.attach_photo(output)
                 if len(media_group.media) == 10 or (not all_as_group and content is media.media[-1]) or (
                         all_as_group and media is medias[-1]):
-                    await ChatActions.upload_video()
+                    try:
+                        await ChatActions.upload_video()
+                    except AttributeError:
+                        pass
                     await bot.send_media_group(chat_id=chat_id, media=media_group)
                     if not all_as_group and isinstance(media, InstagramPost) and media.caption:
                         await bot.send_message(chat_id=chat_id,
@@ -137,7 +140,7 @@ class InstagramUser:
         if 'instagram.com' in self.username:
             self.username = self.__set_username_from_link()
         client = AsyncClient()
-        result = await client.get(url=f'https://www.instagram.com/{self.username}/?__a=1', headers=headers())
+        result = await client.get(url=f'https://www.instagram.com/{self.username}/?__a=1', headers=post_headers())
         try:
             data = json.loads(result.text)
             user = data['graphql']['user']
@@ -157,19 +160,19 @@ class InstagramUser:
     def to_message(self):
         return text(
             f'{"🔒" if self.is_private else "👤"} <a href="https://www.instagram.com/{self.username}/">{self.username}</a>',
-            f'📷 Количество постов – <b>{self.posts_count}</b>' if self.posts_count else '',
-            f'📥 Количество подписчиков – <b>{self.followers}</b>' if self.followers else '',
-            f'📤 Количество подписок – <b>{self.followings}</b>\n' if self.followings else '\n',
+            f'📷 Количество постов – <b>{self.posts_count}</b>' if self.posts_count is not None else '',
+            f'📥 Количество подписчиков – <b>{self.followers}</b>' if self.followers is not None else '',
+            f'📤 Количество подписок – <b>{self.followings}</b>\n' if self.followings is not None else '\n',
             f'<b>{self.full_name}</b>' if self.full_name and self.biography else '',
             f'<i>{self.biography}</i>' if self.biography else '',
             sep='\n')
 
-    async def send_to(self, bot: Bot, chat_id: int):
+    async def send_to(self, bot: Bot, chat_id: int, posts_button: bool = True):
         if not self.__is_started:
             await self.start()
         if self and self.user_id:
             return await bot.send_photo(chat_id=chat_id, photo=self.profile_pic_url, caption=self.to_message(),
-                                        reply_markup=user_keyboard(self.username, self.is_private))
+                                        reply_markup=user_keyboard(self.username, self.is_private, posts_button))
         elif not self or not self.user_id:
             await bot.send_message(chat_id=chat_id, text='🛑 <b>Профиль не найден или не существует</b>')
 
@@ -232,7 +235,7 @@ class InstagramUser:
         elif self and self.user_id and not self.is_private:
             client = AsyncClient()
             url = f'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids={self.user_id}'
-            result = await client.get(url=url, headers=headers_stories())
+            result = await client.get(url=url, headers=story_headers())
             try:
                 data = json.loads(result.text)
             except ValueError:
@@ -240,7 +243,7 @@ class InstagramUser:
             self.stories = []
             if 'reels_media' in data and data['reels_media']:
                 for story_responsive in data['reels_media'][0]['items']:
-                    story = InstagramStory(user=self,
+                    story = InstagramStory(user=self, story_id=story_responsive['id'],
                                            media=[get_story_link(story_responsive)],
                                            preview=[story_responsive['image_versions2']['candidates'][0]['url']],
                                            size=[
@@ -263,7 +266,7 @@ class InstagramUser:
         elif self and self.user_id and not self.is_private and self.posts_count:
             client = AsyncClient()
             url = f'https://instagram.com/{self.username}'
-            result = await client.get(url=url, headers=headers(referer=url))
+            result = await client.get(url=url, headers=post_headers(referer=url))
             soup = BeautifulSoup(result.text, 'lxml')
             shared_data = None
             for script in soup.select('script'):
@@ -327,7 +330,7 @@ class InstagramPost:
         url = 'https://www.instagram.com/graphql/query/?' + urlencode({'query_hash': '2c4c2e343a8f64c625ba02b2aa12c7f8',
                                                                        'variables': f'{{"shortcode":"{shortcode_id}","has_threaded_comments":true}}'})
         client = AsyncClient()
-        result = await client.get(url, headers=headers(referer=self.link))
+        result = await client.get(url, headers=post_headers(referer=self.link))
         try:
             data = json.loads(result.text)['data']
             username = data['shortcode_media']['owner']['username']
@@ -390,13 +393,14 @@ class InstagramStory:
     __is_started = False
 
     def __init__(self, link: str = None, user: InstagramUser = None, swipe_link: str = None, media: list = None,
-                 preview: list = None, size: list = None):
+                 preview: list = None, size: list = None, story_id: str = None):
         self.link = link
         self.user = user
         self.swipe_link = swipe_link
         self.media = media
         self.preview = preview
         self.size = size
+        self.story_id = story_id
 
     async def start(self):  # Получить ссылку на историю
         self.__is_started = True
@@ -405,7 +409,7 @@ class InstagramStory:
             return
         url = f'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids={self.user.user_id}'
         client = AsyncClient()
-        result = await client.get(url, headers=headers_stories())
+        result = await client.get(url, headers=story_headers())
         try:
             data = json.loads(result.text)['reels_media']
         except (ValueError, KeyError, TypeError, IndexError):
@@ -477,7 +481,7 @@ class InstagramHighlight:
             return
         url = f'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids=highlight%3A{self.highlight_id}'
         client = AsyncClient()
-        result = await client.get(url, headers=headers_stories())
+        result = await client.get(url, headers=story_headers())
         try:
             data = json.loads(result.text)['reels_media']
             username = data[0]['user']['username']
@@ -485,7 +489,8 @@ class InstagramHighlight:
             return
         self.user, self.media = await InstagramUser(username).start(), []
         for story_responsive in data[0]['items']:
-            story = InstagramStory(user=self.user, media=[get_story_link(story_responsive)],
+            story = InstagramStory(user=self.user, story_id=story_responsive['id'],
+                                   media=[get_story_link(story_responsive)],
                                    preview=story_responsive['image_versions2']['candidates'][0]['url'],
                                    size=[{'width': story_responsive['image_versions2']['candidates'][0]['width'],
                                           'height': story_responsive['image_versions2']['candidates'][0]['height']}])
@@ -505,7 +510,7 @@ class InstagramHighlight:
         if not self.__is_started:
             await self.start()
         if self.user and self.user.user_id and self.media:
-            await smart_send_media(bot, upload_client, chat_id, self.media)
+            await smart_send_media(bot, upload_client, chat_id, self.media, True)
         elif not self.user or not self.user.user_id:
             if call:
                 await call.answer(text='🛑 Неверная ссылка', show_alert=True)
@@ -531,7 +536,7 @@ class InstagramHighlight:
         else:
             client = AsyncClient()
             try:
-                result = await client.get(url=self.link, headers=headers_stories())
+                result = await client.get(url=self.link, headers=story_headers())
                 for data in result.history:
                     if data.is_redirect:
                         link = urlparse(data.headers.raw[1][1].decode('utf-8'))[2].split('/')

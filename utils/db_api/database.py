@@ -1,9 +1,11 @@
 from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup
+from aiogram.utils.exceptions import BotBlocked
+from asyncpg.exceptions import ForeignKeyViolationError
 from gino import Gino
 from data.config import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
 import datetime
-from sqlalchemy import Column, Integer, String, Sequence, DateTime, Boolean, Text, ForeignKey, Index
+from sqlalchemy import Column, Integer, String, Sequence, DateTime, ForeignKey, Index, and_, Float
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy import sql
 
@@ -43,10 +45,10 @@ class User(database.Model):
             new_user = User(user_id=user_id, language=language, first_name=first_name, username=username,
                             referral=referral)
             await new_user.create()
-            return new_user
+            return new_user, False
         else:
-            old_user.update(first_name=first_name, username=username)
-            return old_user
+            await old_user.update(first_name=first_name, username=username).apply()
+            return old_user, True
 
     @staticmethod
     async def mailing(bot: Bot, text: str, keyboard: InlineKeyboardMarkup = None) -> int:
@@ -55,7 +57,7 @@ class User(database.Model):
             try:
                 await bot.send_message(chat_id=user.user_id, text=text, reply_markup=keyboard)
                 count_users += 1
-            except:
+            except BotBlocked:
                 pass
         return count_users
 
@@ -67,52 +69,148 @@ class User(database.Model):
         return f'<User(id=\'{self.id}\', first_name=\'{self.first_name}\', username=\'{self.username}\')>'
 
 
-class Item(database.Model):
-    __tablename__ = 'items'
-
-    id = Column(Integer, Sequence('item_id_seq'), primary_key=True)
-    title = Column(String(64))
-    description = Column(Text)
-    photo = Column(String(256))
-    price = Column(Integer)
-    visible = Column(Boolean, default=True)
-    query: sql.Select
-
-    _idx = Index('item_id_index', 'id')
-
-    def __init__(self, title: str = None, description: str = None, photo: str = None, price: int = None,
-                 visible: bool = False):
-        super().__init__()
-        self.title, self.description, self.photo, self.price, self.visible = title, description, photo, price, visible
-
-    def __repr__(self):
-        return f'<Item(id=\'{self.id}\', name=\'{self.title}\', price=\'{self.price}\')>'
-
-
 class Purchase(database.Model):
     __tablename__ = 'purchases'
 
     id = Column(Integer, Sequence('purc_id_seq'), primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'))
-    item_id = Column(Integer, ForeignKey('items.id'))
-    amount = Column(Integer)
+    amount = Column(Float)
     purchase_time = Column(DateTime, server_default='now()')
-    phone_number = Column(String(16))
-    email = Column(String(128))
-    receiver = Column(String(128))
-    successful = Column(Boolean, default=False)
     query: sql.Select
 
     _idx = Index('purc_id_index', 'id')
 
-    def __init__(self, user_id: int = None, item_id: int = None, amount: int = None,
-                 purchase_time: datetime.datetime = None,
-                 phone_number: str = None, email: str = None, receiver: str = None, successful: bool = False):
+    def __init__(self, user_id: int = None, amount: int = None,
+                 purchase_time: datetime.datetime = datetime.datetime.now()):
         super().__init__()
-        self.user_id, self.item_id, self.amount, self.purchase_time, self.phone_number, self.email, self.receiver, self.successful = user_id, item_id, amount, purchase_time, phone_number, email, receiver, successful
+        self.user_id, self.amount, self.purchase_time = user_id, amount, purchase_time
+
+    @staticmethod
+    async def add(user_id: int = None, amount: int = None,
+                  purchase_time: datetime.datetime = None):
+        try:
+            purc = Purchase(user_id, amount, purchase_time)
+            await purc.create()
+        except ForeignKeyViolationError:
+            await User.add_user(user_id=user_id)
+            purc = Purchase(user_id, amount, purchase_time)
+            await purc.create()
+        return purc
+
+    @staticmethod
+    async def get(user_id: int, amount: int, purchase_time: datetime.datetime):
+        return await Purchase.query.where(and_(and_(Purchase.user_id == user_id, Purchase.amount == amount),
+                                               Purchase.purchase_time == purchase_time)).gino.first()
 
     def __repr__(self):
         return f'<Purchase(id=\'{self.id}\', user_id=\'{self.user_id}\', amount=\'{self.amount}\')>'
+
+
+class Subscriber(database.Model):
+    __tablename__ = 'subscribers'
+
+    id = Column(Integer, Sequence('subscribers_id_seq'), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'))
+    ended_at = Column(DateTime)
+    query: sql.Select
+
+    _idx1 = Index('subscribers_id_index', 'id')
+    _idx2 = Index('subscribers_user_id_index', 'user_id')
+
+    def __init__(self, user_id: int = None, ended_at: datetime.datetime = None):
+        super().__init__()
+        self.user_id, self.ended_at = user_id, ended_at
+
+    @staticmethod
+    async def add(user_id: int, duration: int):
+        subscriber = await Subscriber.get(user_id=user_id)
+        if subscriber and subscriber.is_actual():
+            await subscriber.update(ended_at=subscriber.ended_at + datetime.timedelta(duration)).apply()
+        elif subscriber:
+            await subscriber.update(ended_at=datetime.datetime.now() + datetime.timedelta(duration)).apply()
+        else:
+            try:
+                subscriber = Subscriber(user_id=user_id,
+                                        ended_at=datetime.datetime.now() + datetime.timedelta(duration))
+                await subscriber.create()
+            except ForeignKeyViolationError:
+                await User.add_user(user_id=user_id)
+                subscriber = Subscriber(user_id=user_id,
+                                        ended_at=datetime.datetime.now() + datetime.timedelta(duration))
+                await subscriber.create()
+        return subscriber
+
+    def is_actual(self):
+        return True if self.ended_at >= datetime.datetime.now() else False
+
+    @staticmethod
+    async def get(user_id: int):
+        return await Subscriber.query.where(Subscriber.user_id == user_id).gino.first()
+
+    def __repr__(self):
+        return f'<Subscriber(user_id=\'{self.user_id}\', ended_at=\'{self.ended_at.strftime("%d.%m.%Y")}\')>'
+
+
+class Giveaway(database.Model):
+    __tablename__ = 'giveaways'
+
+    id = Column(Integer, Sequence('giveaways_id_seq'), primary_key=True)
+    created_at = Column(DateTime, default=datetime.datetime.now())
+    query: sql.Select
+
+    _idx1 = Index('giveaways_id_index', 'id')
+
+    def __init__(self, created_at: datetime.datetime = datetime.datetime.now()):
+        super().__init__()
+        self.created_at = created_at
+
+    @staticmethod
+    async def add():
+        giveaway = Giveaway()
+        await giveaway.create()
+        return giveaway
+
+    def __repr__(self):
+        return f'<Giveaway(id=\'{self.id}\')>'
+
+
+class GiveawayUser(database.Model):
+    __tablename__ = 'giveaway_users'
+
+    id = Column(Integer, Sequence('giveaway_users_id_seq'), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'))
+    created_at = Column(DateTime, default=datetime.datetime.now())
+    giveaway_id = Column(Integer, ForeignKey('giveaways.id'))
+    query: sql.Select
+
+    _idx1 = Index('giveaway_users_id_index', 'id')
+    _idx2 = Index('giveaway_users_user_id_index', 'user_id')
+
+    def __init__(self, user_id: int = None, giveaway_id: int = None,
+                 created_at: datetime.datetime = datetime.datetime.now()):
+        super().__init__()
+        self.user_id, self.created_at, self.giveaway_id = user_id, created_at, giveaway_id
+
+    @staticmethod
+    async def add(user_id: int, giveaway_id: int):
+        giveaway_user = await GiveawayUser.get(user_id=user_id, giveaway_id=giveaway_id)
+        if giveaway_user:
+            return giveaway_user, True
+        else:
+            try:
+                giveaway_user = GiveawayUser(user_id=user_id, giveaway_id=giveaway_id)
+                await giveaway_user.create()
+                return giveaway_user, False
+            except ForeignKeyViolationError:
+                return None
+
+    @staticmethod
+    async def get(user_id: int, giveaway_id: int):
+        return await GiveawayUser.query.where(
+            and_(GiveawayUser.user_id == user_id, GiveawayUser.giveaway_id == giveaway_id)).gino.first()
+
+    def __repr__(self):
+        return f'<GiveawayUser(user_id=\'{self.user_id}\', giveaway_id=\'{self.giveaway_id}\')>'
 
 
 async def create_database():
@@ -121,4 +219,3 @@ async def create_database():
         await database.gino.create_all()
     except InvalidRequestError:
         pass
-    return database
