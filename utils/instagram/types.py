@@ -140,7 +140,7 @@ class InstagramUser:
         if 'instagram.com' in self.username:
             self.username = self.__set_username_from_link()
         client = AsyncClient()
-        result = await client.get(url=f'https://www.instagram.com/{self.username}/?__a=1', headers=post_headers())
+        result = await client.get(url=f'https://www.instagram.com/{self.username}/?__a=1', headers=await post_headers())
         try:
             data = json.loads(result.text)
             user = data['graphql']['user']
@@ -235,7 +235,7 @@ class InstagramUser:
         elif self and self.user_id and not self.is_private:
             client = AsyncClient()
             url = f'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids={self.user_id}'
-            result = await client.get(url=url, headers=story_headers())
+            result = await client.get(url=url, headers=await story_headers())
             try:
                 data = json.loads(result.text)
             except ValueError:
@@ -266,7 +266,7 @@ class InstagramUser:
         elif self and self.user_id and not self.is_private and self.posts_count:
             client = AsyncClient()
             url = f'https://instagram.com/{self.username}'
-            result = await client.get(url=url, headers=post_headers(referer=url))
+            result = await client.get(url=url, headers=await post_headers(referer=url))
             soup = BeautifulSoup(result.text, 'lxml')
             shared_data = None
             for script in soup.select('script'):
@@ -330,7 +330,7 @@ class InstagramPost:
         url = 'https://www.instagram.com/graphql/query/?' + urlencode({'query_hash': '2c4c2e343a8f64c625ba02b2aa12c7f8',
                                                                        'variables': f'{{"shortcode":"{shortcode_id}","has_threaded_comments":true}}'})
         client = AsyncClient()
-        result = await client.get(url, headers=post_headers(referer=self.link))
+        result = await client.get(url, headers=await post_headers(referer=self.link))
         try:
             data = json.loads(result.text)['data']
             username = data['shortcode_media']['owner']['username']
@@ -409,7 +409,7 @@ class InstagramStory:
             return
         url = f'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids={self.user.user_id}'
         client = AsyncClient()
-        result = await client.get(url, headers=story_headers())
+        result = await client.get(url, headers=await story_headers())
         try:
             data = json.loads(result.text)['reels_media']
         except (ValueError, KeyError, TypeError, IndexError):
@@ -481,7 +481,7 @@ class InstagramHighlight:
             return
         url = f'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids=highlight%3A{self.highlight_id}'
         client = AsyncClient()
-        result = await client.get(url, headers=story_headers())
+        result = await client.get(url, headers=await story_headers())
         try:
             data = json.loads(result.text)['reels_media']
             username = data[0]['user']['username']
@@ -536,7 +536,7 @@ class InstagramHighlight:
         else:
             client = AsyncClient()
             try:
-                result = await client.get(url=self.link, headers=story_headers())
+                result = await client.get(url=self.link, headers=await story_headers())
                 for data in result.history:
                     if data.is_redirect:
                         link = urlparse(data.headers.raw[1][1].decode('utf-8'))[2].split('/')
