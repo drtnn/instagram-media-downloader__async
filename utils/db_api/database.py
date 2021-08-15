@@ -5,7 +5,7 @@ from asyncpg.exceptions import ForeignKeyViolationError
 from gino import Gino
 from data.config import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
 from datetime import datetime, timedelta
-from sqlalchemy import Column, Integer, String, Sequence, DateTime, ForeignKey, Index, and_, Float, Boolean
+from sqlalchemy import Column, Integer, String, Sequence, DateTime, ForeignKey, Index, and_, Float, VARCHAR
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy import sql
 
@@ -89,32 +89,47 @@ class Purchase(database.Model):
     id = Column(Integer, Sequence('purc_id_seq'), primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'))
     amount = Column(Float)
-    purchase_time = Column(DateTime, default=datetime.now())
+    created_at = Column(DateTime, default=datetime.now())
     query: sql.Select
 
     _idx = Index('purc_id_index', 'id')
 
     def __init__(self, user_id: int = None, amount: int = None,
-                 purchase_time: datetime = None):
+                 created_at: datetime = None):
         super().__init__()
-        self.user_id, self.amount, self.purchase_time = user_id, amount, purchase_time
+        self.user_id, self.amount, self.created_at = user_id, amount, created_at
 
     @staticmethod
     async def add(user_id: int = None, amount: int = None,
-                  purchase_time: datetime = None):
+                  created_at: datetime = None):
         try:
-            purc = Purchase(user_id, amount, purchase_time)
+            purc = Purchase(user_id, amount, created_at)
             await purc.create()
         except ForeignKeyViolationError:
             await User.add(user_id=user_id)
-            purc = Purchase(user_id, amount, purchase_time)
+            purc = Purchase(user_id, amount, created_at)
             await purc.create()
         return purc
 
     @staticmethod
-    async def get(user_id: int, amount: int, purchase_time: datetime):
+    async def get(user_id: int, amount: int, created_at: datetime):
         return await Purchase.query.where(and_(and_(Purchase.user_id == user_id, Purchase.amount == amount),
-                                               Purchase.purchase_time == purchase_time)).gino.first()
+                                               Purchase.created_at == created_at)).gino.first()
+
+    @staticmethod
+    async def sum_for_date(date: datetime):
+        next_day = date.date() + timedelta(1)
+        subs_sum = await database.select([database.func.sum(Purchase.amount)]).where(
+            and_(Purchase.created_at >= date.date(), Purchase.created_at <= next_day)).gino.scalar()
+        return subs_sum if subs_sum else 0
+
+    @staticmethod
+    async def sum_for_dates(date: datetime, duration: int):
+        result = dict()
+        for day in reversed(range(duration)):
+            tmp_date = date - timedelta(day)
+            result[tmp_date.strftime('%d.%m')] = await Purchase.sum_for_date(tmp_date)
+        return result
 
     def __repr__(self):
         return f'<Purchase(id=\'{self.id}\', user_id=\'{self.user_id}\', amount=\'{self.amount}\')>'
@@ -165,29 +180,55 @@ class Subscriber(database.Model):
         return f'<Subscriber(user_id=\'{self.user_id}\', ended_at=\'{self.ended_at.strftime("%d.%m.%Y")}\')>'
 
 
-class RequestsAnalytic(database.Model):
-    __tablename__ = 'requests_analytic'
+class Requests(database.Model):
+    __tablename__ = 'requests'
 
-    id = Column(Integer, Sequence('requests_analytic_users_id_seq'), primary_key=True)
+    id = Column(Integer, Sequence('requests_users_id_seq'), primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'))
     created_at = Column(DateTime, default=datetime.now())
-    from_subscriber = Column(Boolean)
+    content_type = Column(VARCHAR(length=1))
     query: sql.Select
 
-    _idx1 = Index('requests_analytic_id_index', 'id')
-    _idx2 = Index('requests_analytic_user_id_index', 'user_id')
-    _idx3 = Index('requests_analytic_created_at_index', 'created_at')
+    _idx1 = Index('requests_id_index', 'id')
+    _idx2 = Index('requests_user_id_index', 'user_id')
+    _idx3 = Index('requests_created_at_index', 'created_at')
+    _idx4 = Index('requests_content_type_index', 'content_type')
 
-    def __init__(self, user_id: int = None, from_subscriber: bool = None):
+    def __init__(self, user_id: int = None, content_type: str = None):
         super().__init__()
-        self.user_id, self.from_subscriber = user_id, from_subscriber
+        self.user_id, self.content_type = user_id, content_type
 
     @staticmethod
-    async def add(user_id: int):
-        subscriber = await Subscriber.add(user_id=user_id, duration=0)
-        requests_analytic = RequestsAnalytic(user_id=user_id, from_subscriber=subscriber.is_actual())
-        await requests_analytic.create()
-        return requests_analytic
+    async def add(user_id: int, content_type: str):
+        user, _ = await User.add(user_id=user_id)
+        requests = Requests(user_id=user_id, content_type=content_type)
+        await requests.create()
+        return requests
+
+    @staticmethod
+    async def count_for_date(date: datetime):
+        next_day = date.date() + timedelta(1)
+        return await database.select([database.func.count()]).where(
+            and_(Requests.created_at >= date.date(), Requests.created_at <= next_day)).gino.scalar()
+
+    @staticmethod
+    async def count_for_dates(date: datetime, duration: int):
+        result = dict()
+        for day in reversed(range(duration)):
+            tmp_date = date - timedelta(day)
+            result[tmp_date.strftime('%d.%m')] = await Requests.count_for_date(tmp_date)
+        return result
+
+    @staticmethod
+    async def count_of_content_type(content_type: str, date: datetime = None, duration: int = None):
+        if date and duration:
+            first_date = date.date() - timedelta(duration)
+            return await database.select([database.func.count()]).where(
+                and_(and_(Requests.created_at >= first_date, Requests.created_at <= date.date()),
+                     Requests.content_type == content_type)).gino.scalar()
+        else:
+            return await database.select([database.func.count()]).where(
+                Requests.content_type == content_type).gino.scalar()
 
     def __repr__(self):
         return f'<RequestsAnalytic(user_id=\'{self.user_id}\', created_at=\'{self.created_at.strftime("%d.%m.%Y")}\')>'
