@@ -8,7 +8,6 @@ ADMINS = [int(user_id) for user_id in env.list('ADMINS')]
 BOT_TOKEN = env.str('BOT_TOKEN')
 BOT_NAME = env.str('BOT_NAME')
 
-DATABASE_URL = env.str('DATABASE_URL')
 DB_NAME = env.str('DB_NAME')
 DB_HOST = env.str('DB_HOST')
 DB_USER = env.str('DB_USER')
@@ -18,6 +17,7 @@ DB_PORT = env.int('DB_PORT')
 CURRENT_DIR = env.str('CURRENT_DIR') if env.str('CURRENT_DIR') else f'{os.getcwd()}/'
 SESSION_DIR = CURRENT_DIR + 'sessions/'
 DOWNLOAD_DIR = CURRENT_DIR + 'downloads/'
+CHART_DIR = CURRENT_DIR + 'charts/'
 LOGFILE = CURRENT_DIR + 'instagram-bot.log'
 
 TELETHON_API_ID = env.int('API_ID')
