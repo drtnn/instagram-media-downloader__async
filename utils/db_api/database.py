@@ -21,15 +21,15 @@ class User(database.Model):
     first_name = Column(String(128))
     username = Column(String(128))
     referral = Column(Integer)
-    created_at = Column(DateTime, default=datetime.now())
+    created_at = Column(DateTime)
     query: sql.Select
 
     _idx = Index('user_id_index', 'user_id')
 
     def __init__(self, user_id: int = None, language: str = None, first_name: str = None, username: str = None,
-                 referral: int = None):
+                 referral: int = None, created_at: datetime = datetime.now()):
         super().__init__()
-        self.user_id, self.language, self.first_name, self.username, self.referral = user_id, language, first_name, username, referral
+        self.user_id, self.language, self.first_name, self.username, self.referral, self.created_at = user_id, language, first_name, username, referral, created_at
 
     async def set_language(self, language):
         await self.update(language=language).apply()
@@ -44,7 +44,7 @@ class User(database.Model):
         old_user = await User.get(user_id=user_id)
         if not old_user:
             new_user = User(user_id=user_id, language=language, first_name=first_name, username=username,
-                            referral=referral)
+                            referral=referral, created_at=datetime.now())
             await new_user.create()
             return new_user, False
         else:
@@ -69,7 +69,7 @@ class User(database.Model):
     async def count_for_date(date: datetime):
         next_day = date.date() + timedelta(1)
         return await database.select([database.func.count()]).where(
-            and_(User.created_at >= date.date(), User.created_at <= next_day)).gino.scalar()
+            and_(User.created_at >= date.date(), User.created_at < next_day)).gino.scalar()
 
     @staticmethod
     async def count_for_dates(date: datetime, duration: int):
@@ -89,7 +89,7 @@ class Purchase(database.Model):
     id = Column(Integer, Sequence('purc_id_seq'), primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'))
     amount = Column(Float)
-    created_at = Column(DateTime, default=datetime.now())
+    created_at = Column(DateTime)
     query: sql.Select
 
     _idx = Index('purc_id_index', 'id')
@@ -100,8 +100,8 @@ class Purchase(database.Model):
         self.user_id, self.amount, self.created_at = user_id, amount, created_at
 
     @staticmethod
-    async def add(user_id: int = None, amount: int = None,
-                  created_at: datetime = None):
+    async def add(user_id: int, amount: int,
+                  created_at: datetime):
         try:
             purc = Purchase(user_id, amount, created_at)
             await purc.create()
@@ -120,7 +120,7 @@ class Purchase(database.Model):
     async def sum_for_date(date: datetime):
         next_day = date.date() + timedelta(1)
         subs_sum = await database.select([database.func.sum(Purchase.amount)]).where(
-            and_(Purchase.created_at >= date.date(), Purchase.created_at <= next_day)).gino.scalar()
+            and_(Purchase.created_at >= date.date(), Purchase.created_at < next_day)).gino.scalar()
         return subs_sum if subs_sum else 0
 
     @staticmethod
@@ -185,7 +185,7 @@ class Requests(database.Model):
 
     id = Column(Integer, Sequence('requests_users_id_seq'), primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'))
-    created_at = Column(DateTime, default=datetime.now())
+    created_at = Column(DateTime)
     content_type = Column(VARCHAR(length=1))
     query: sql.Select
 
@@ -194,14 +194,14 @@ class Requests(database.Model):
     _idx3 = Index('requests_created_at_index', 'created_at')
     _idx4 = Index('requests_content_type_index', 'content_type')
 
-    def __init__(self, user_id: int = None, content_type: str = None):
+    def __init__(self, user_id: int = None, content_type: str = None, created_at: datetime = datetime.now()):
         super().__init__()
-        self.user_id, self.content_type = user_id, content_type
+        self.user_id, self.content_type, self.created_at = user_id, content_type, created_at
 
     @staticmethod
     async def add(user_id: int, content_type: str):
         user, _ = await User.add(user_id=user_id)
-        requests = Requests(user_id=user_id, content_type=content_type)
+        requests = Requests(user_id=user_id, content_type=content_type, created_at=datetime.now())
         await requests.create()
         return requests
 
@@ -209,7 +209,7 @@ class Requests(database.Model):
     async def count_for_date(date: datetime):
         next_day = date.date() + timedelta(1)
         return await database.select([database.func.count()]).where(
-            and_(Requests.created_at >= date.date(), Requests.created_at <= next_day)).gino.scalar()
+            and_(Requests.created_at >= date.date(), Requests.created_at < next_day)).gino.scalar()
 
     @staticmethod
     async def count_for_dates(date: datetime, duration: int):
@@ -231,7 +231,7 @@ class Requests(database.Model):
                 Requests.content_type == content_type).gino.scalar()
 
     def __repr__(self):
-        return f'<RequestsAnalytic(user_id=\'{self.user_id}\', created_at=\'{self.created_at.strftime("%d.%m.%Y")}\')>'
+        return f'<Requests(user_id=\'{self.user_id}\', created_at=\'{self.created_at.strftime("%d.%m.%Y")}\')>'
 
 
 async def create_database():
