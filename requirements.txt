@@ -1,5 +1,5 @@
 aiofiles==0.7.0
-aiogram==2.13
+aiogram~=2.14.3
 aiohttp==3.7.4.post0
 async-timeout==3.0.1
 asyncpg==0.23.0
@@ -40,3 +40,5 @@ Telethon==1.22.0
 typing-extensions==3.10.0.0
 urllib3==1.26.5
 yarl==1.6.3
+numpy~=1.21.1
+matplotlib~=3.4.3

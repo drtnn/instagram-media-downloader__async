@@ -1,8 +1,8 @@
+import aiofiles
 from data.config import CURRENT_DIR
 import json
 import random
 
-COOKIE = json.loads(open(CURRENT_DIR + 'utils/instagram/cookies.json', 'r').read())
 
 headers_agent_list = [
     "Mozilla/5.0 (Windows NT 5.1; rv:41.0) Gecko/20100101"
@@ -20,8 +20,9 @@ headers_agent_list = [
 ]
 
 
-def post_headers(referer: str = None):
-    cookie = random.choice(COOKIE)
+async def post_headers(referer: str = None):
+    file = await aiofiles.open(CURRENT_DIR + 'utils/instagram/cookies.json', mode='r')
+    cookie = random.choice(json.loads(await file.read()))
     headers_classic = {
         'authority': 'www.instagram.com',
         'pragma': 'no-cache',
@@ -46,8 +47,9 @@ def post_headers(referer: str = None):
     return headers_classic
 
 
-def story_headers():
-    cookie = random.choice(COOKIE)
+async def story_headers():
+    file = await aiofiles.open(CURRENT_DIR + 'utils/instagram/cookies.json', mode='r')
+    cookie = random.choice(json.loads(await file.read()))
     return {
         'authority': 'i.instagram.com',
         'pragma': 'no-cache',

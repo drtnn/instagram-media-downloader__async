@@ -56,12 +56,3 @@ def payment_keyboard(url: str, price: int):
                              url=url)
     )
     return keyboard
-
-
-def giveaway_keyboard(giveaway_id: str):
-    keyboard = InlineKeyboardMarkup()
-    keyboard.add(
-        InlineKeyboardButton(text='✔️ Участвовать',
-                             url=f't.me/{BOT_NAME}?start=giveaway_{giveaway_id}')
-    )
-    return keyboard

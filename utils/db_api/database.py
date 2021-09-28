@@ -4,8 +4,8 @@ from aiogram.utils.exceptions import BotBlocked
 from asyncpg.exceptions import ForeignKeyViolationError
 from gino import Gino
 from data.config import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
-import datetime
-from sqlalchemy import Column, Integer, String, Sequence, DateTime, ForeignKey, Index, and_, Float
+from datetime import datetime, timedelta
+from sqlalchemy import Column, Integer, String, Sequence, DateTime, ForeignKey, Index, and_, Float, VARCHAR
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy import sql
 
@@ -21,33 +21,33 @@ class User(database.Model):
     first_name = Column(String(128))
     username = Column(String(128))
     referral = Column(Integer)
+    created_at = Column(DateTime)
     query: sql.Select
 
     _idx = Index('user_id_index', 'user_id')
 
     def __init__(self, user_id: int = None, language: str = None, first_name: str = None, username: str = None,
-                 referral: int = None):
+                 referral: int = None, created_at: datetime = datetime.now()):
         super().__init__()
-        self.user_id, self.language, self.first_name, self.username, self.referral = user_id, language, first_name, username, referral
+        self.user_id, self.language, self.first_name, self.username, self.referral, self.created_at = user_id, language, first_name, username, referral, created_at
 
     async def set_language(self, language):
         await self.update(language=language).apply()
 
     @staticmethod
-    async def get_user(user_id: int):
+    async def get(user_id: int):
         return await User.query.where(User.user_id == user_id).gino.first()
 
     @staticmethod
-    async def add_user(user_id: int, language: str = None, first_name: str = None, username: str = None,
-                       referral: int = None):
-        old_user = await User.get_user(user_id=user_id)
+    async def add(user_id: int, language: str = None, first_name: str = None, username: str = None,
+                  referral: int = None):
+        old_user = await User.get(user_id=user_id)
         if not old_user:
             new_user = User(user_id=user_id, language=language, first_name=first_name, username=username,
-                            referral=referral)
+                            referral=referral, created_at=datetime.now())
             await new_user.create()
             return new_user, False
         else:
-            await old_user.update(first_name=first_name, username=username).apply()
             return old_user, True
 
     @staticmethod
@@ -65,6 +65,20 @@ class User(database.Model):
     async def count_users() -> int:
         return await database.func.count(User.id).gino.scalar()
 
+    @staticmethod
+    async def count_for_date(date: datetime):
+        next_day = date.date() + timedelta(1)
+        return await database.select([database.func.count()]).where(
+            and_(User.created_at >= date.date(), User.created_at < next_day)).gino.scalar()
+
+    @staticmethod
+    async def count_for_dates(date: datetime, duration: int):
+        result = dict()
+        for day in reversed(range(duration)):
+            tmp_date = date - timedelta(day)
+            result[tmp_date.strftime('%d.%m')] = await User.count_for_date(tmp_date)
+        return result
+
     def __repr__(self):
         return f'<User(id=\'{self.id}\', first_name=\'{self.first_name}\', username=\'{self.username}\')>'
 
@@ -75,32 +89,47 @@ class Purchase(database.Model):
     id = Column(Integer, Sequence('purc_id_seq'), primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'))
     amount = Column(Float)
-    purchase_time = Column(DateTime, server_default='now()')
+    created_at = Column(DateTime)
     query: sql.Select
 
     _idx = Index('purc_id_index', 'id')
 
     def __init__(self, user_id: int = None, amount: int = None,
-                 purchase_time: datetime.datetime = datetime.datetime.now()):
+                 created_at: datetime = None):
         super().__init__()
-        self.user_id, self.amount, self.purchase_time = user_id, amount, purchase_time
+        self.user_id, self.amount, self.created_at = user_id, amount, created_at
 
     @staticmethod
-    async def add(user_id: int = None, amount: int = None,
-                  purchase_time: datetime.datetime = None):
+    async def add(user_id: int, amount: int,
+                  created_at: datetime):
         try:
-            purc = Purchase(user_id, amount, purchase_time)
+            purc = Purchase(user_id, amount, created_at)
             await purc.create()
         except ForeignKeyViolationError:
-            await User.add_user(user_id=user_id)
-            purc = Purchase(user_id, amount, purchase_time)
+            await User.add(user_id=user_id)
+            purc = Purchase(user_id, amount, created_at)
             await purc.create()
         return purc
 
     @staticmethod
-    async def get(user_id: int, amount: int, purchase_time: datetime.datetime):
+    async def get(user_id: int, amount: int, created_at: datetime):
         return await Purchase.query.where(and_(and_(Purchase.user_id == user_id, Purchase.amount == amount),
-                                               Purchase.purchase_time == purchase_time)).gino.first()
+                                               Purchase.created_at == created_at)).gino.first()
+
+    @staticmethod
+    async def sum_for_date(date: datetime):
+        next_day = date.date() + timedelta(1)
+        subs_sum = await database.select([database.func.sum(Purchase.amount)]).where(
+            and_(Purchase.created_at >= date.date(), Purchase.created_at < next_day)).gino.scalar()
+        return subs_sum if subs_sum else 0
+
+    @staticmethod
+    async def sum_for_dates(date: datetime, duration: int):
+        result = dict()
+        for day in reversed(range(duration)):
+            tmp_date = date - timedelta(day)
+            result[tmp_date.strftime('%d.%m')] = await Purchase.sum_for_date(tmp_date)
+        return result
 
     def __repr__(self):
         return f'<Purchase(id=\'{self.id}\', user_id=\'{self.user_id}\', amount=\'{self.amount}\')>'
@@ -117,7 +146,7 @@ class Subscriber(database.Model):
     _idx1 = Index('subscribers_id_index', 'id')
     _idx2 = Index('subscribers_user_id_index', 'user_id')
 
-    def __init__(self, user_id: int = None, ended_at: datetime.datetime = None):
+    def __init__(self, user_id: int = None, ended_at: datetime = None):
         super().__init__()
         self.user_id, self.ended_at = user_id, ended_at
 
@@ -125,23 +154,23 @@ class Subscriber(database.Model):
     async def add(user_id: int, duration: int):
         subscriber = await Subscriber.get(user_id=user_id)
         if subscriber and subscriber.is_actual():
-            await subscriber.update(ended_at=subscriber.ended_at + datetime.timedelta(duration)).apply()
+            await subscriber.update(ended_at=subscriber.ended_at + timedelta(duration)).apply()
         elif subscriber:
-            await subscriber.update(ended_at=datetime.datetime.now() + datetime.timedelta(duration)).apply()
+            await subscriber.update(ended_at=datetime.now() + timedelta(duration)).apply()
         else:
             try:
                 subscriber = Subscriber(user_id=user_id,
-                                        ended_at=datetime.datetime.now() + datetime.timedelta(duration))
+                                        ended_at=datetime.now() + timedelta(duration))
                 await subscriber.create()
             except ForeignKeyViolationError:
-                await User.add_user(user_id=user_id)
+                await User.add(user_id=user_id)
                 subscriber = Subscriber(user_id=user_id,
-                                        ended_at=datetime.datetime.now() + datetime.timedelta(duration))
+                                        ended_at=datetime.now() + timedelta(duration))
                 await subscriber.create()
         return subscriber
 
     def is_actual(self):
-        return True if self.ended_at >= datetime.datetime.now() else False
+        return True if self.ended_at >= datetime.now() else False
 
     @staticmethod
     async def get(user_id: int):
@@ -151,66 +180,58 @@ class Subscriber(database.Model):
         return f'<Subscriber(user_id=\'{self.user_id}\', ended_at=\'{self.ended_at.strftime("%d.%m.%Y")}\')>'
 
 
-class Giveaway(database.Model):
-    __tablename__ = 'giveaways'
+class Requests(database.Model):
+    __tablename__ = 'requests'
 
-    id = Column(Integer, Sequence('giveaways_id_seq'), primary_key=True)
-    created_at = Column(DateTime, default=datetime.datetime.now())
-    query: sql.Select
-
-    _idx1 = Index('giveaways_id_index', 'id')
-
-    def __init__(self, created_at: datetime.datetime = datetime.datetime.now()):
-        super().__init__()
-        self.created_at = created_at
-
-    @staticmethod
-    async def add():
-        giveaway = Giveaway()
-        await giveaway.create()
-        return giveaway
-
-    def __repr__(self):
-        return f'<Giveaway(id=\'{self.id}\')>'
-
-
-class GiveawayUser(database.Model):
-    __tablename__ = 'giveaway_users'
-
-    id = Column(Integer, Sequence('giveaway_users_id_seq'), primary_key=True)
+    id = Column(Integer, Sequence('requests_users_id_seq'), primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'))
-    created_at = Column(DateTime, default=datetime.datetime.now())
-    giveaway_id = Column(Integer, ForeignKey('giveaways.id'))
+    created_at = Column(DateTime)
+    content_type = Column(VARCHAR(length=1))
     query: sql.Select
 
-    _idx1 = Index('giveaway_users_id_index', 'id')
-    _idx2 = Index('giveaway_users_user_id_index', 'user_id')
+    _idx1 = Index('requests_id_index', 'id')
+    _idx2 = Index('requests_user_id_index', 'user_id')
+    _idx3 = Index('requests_created_at_index', 'created_at')
+    _idx4 = Index('requests_content_type_index', 'content_type')
 
-    def __init__(self, user_id: int = None, giveaway_id: int = None,
-                 created_at: datetime.datetime = datetime.datetime.now()):
+    def __init__(self, user_id: int = None, content_type: str = None, created_at: datetime = datetime.now()):
         super().__init__()
-        self.user_id, self.created_at, self.giveaway_id = user_id, created_at, giveaway_id
+        self.user_id, self.content_type, self.created_at = user_id, content_type, created_at
 
     @staticmethod
-    async def add(user_id: int, giveaway_id: int):
-        giveaway_user = await GiveawayUser.get(user_id=user_id, giveaway_id=giveaway_id)
-        if giveaway_user:
-            return giveaway_user, True
+    async def add(user_id: int, content_type: str):
+        user, _ = await User.add(user_id=user_id)
+        requests = Requests(user_id=user_id, content_type=content_type, created_at=datetime.now())
+        await requests.create()
+        return requests
+
+    @staticmethod
+    async def count_for_date(date: datetime):
+        next_day = date.date() + timedelta(1)
+        return await database.select([database.func.count()]).where(
+            and_(Requests.created_at >= date.date(), Requests.created_at < next_day)).gino.scalar()
+
+    @staticmethod
+    async def count_for_dates(date: datetime, duration: int):
+        result = dict()
+        for day in reversed(range(duration)):
+            tmp_date = date - timedelta(day)
+            result[tmp_date.strftime('%d.%m')] = await Requests.count_for_date(tmp_date)
+        return result
+
+    @staticmethod
+    async def count_of_content_type(content_type: str, date: datetime = None, duration: int = None):
+        if date and duration:
+            first_date = date.date() - timedelta(duration)
+            return await database.select([database.func.count()]).where(
+                and_(and_(Requests.created_at >= first_date, Requests.created_at <= date.date()),
+                     Requests.content_type == content_type)).gino.scalar()
         else:
-            try:
-                giveaway_user = GiveawayUser(user_id=user_id, giveaway_id=giveaway_id)
-                await giveaway_user.create()
-                return giveaway_user, False
-            except ForeignKeyViolationError:
-                return None
-
-    @staticmethod
-    async def get(user_id: int, giveaway_id: int):
-        return await GiveawayUser.query.where(
-            and_(GiveawayUser.user_id == user_id, GiveawayUser.giveaway_id == giveaway_id)).gino.first()
+            return await database.select([database.func.count()]).where(
+                Requests.content_type == content_type).gino.scalar()
 
     def __repr__(self):
-        return f'<GiveawayUser(user_id=\'{self.user_id}\', giveaway_id=\'{self.giveaway_id}\')>'
+        return f'<Requests(user_id=\'{self.user_id}\', created_at=\'{self.created_at.strftime("%d.%m.%Y")}\')>'
 
 
 async def create_database():
