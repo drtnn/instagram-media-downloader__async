@@ -9,7 +9,7 @@ from utils.db_api.database import Requests
 from utils.instagram import InstagramUser
 
 
-@dp.message_handler(is_subscriber=True, instagram_user=True, state='*')
+@dp.message_handler(instagram_user=True, state='*')
 async def instagram_user_handler(message: Message):
     user = InstagramUser(message.text.lower())
     await user.start()
@@ -31,7 +31,7 @@ async def instagram_user_handler(message: Message):
     await Requests.add(user_id=message.from_user.id, content_type='u')
 
 
-@dp.callback_query_handler(stories_callback.filter(), is_subscriber=True, state='*')
+@dp.callback_query_handler(stories_callback.filter(), state='*')
 async def instagram_stories_callback_query_handler(call: CallbackQuery, callback_data: dict):
     user = InstagramUser(callback_data['username'])
     await user.start()
@@ -39,7 +39,7 @@ async def instagram_stories_callback_query_handler(call: CallbackQuery, callback
     await Requests.add(user_id=call.from_user.id, content_type='s')
 
 
-@dp.inline_handler(is_subscriber=True, text='', state=InlineContent.post)
+@dp.inline_handler(text='', state=InlineContent.post)
 async def instagram_user_inline_posts(query: InlineQuery, state: FSMContext):
     data = await state.get_data()
     user = InstagramUser(data['username'])
@@ -48,7 +48,7 @@ async def instagram_user_inline_posts(query: InlineQuery, state: FSMContext):
     await Requests.add(user_id=query.from_user.id, content_type='p')
 
 
-@dp.inline_handler(is_subscriber=True, instagram_inline_user=True, state='*')
+@dp.inline_handler(instagram_inline_user=True, state='*')
 async def instagram_user_inline_handler(query: InlineQuery):
     user = InstagramUser(query.query.strip())
     await user.start()

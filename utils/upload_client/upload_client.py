@@ -1,4 +1,6 @@
 import asyncio
+from sqlite3 import OperationalError
+
 import aiofiles
 from data.config import SESSION_DIR, DOWNLOAD_DIR
 from http3 import AsyncClient
@@ -7,8 +9,14 @@ from telegram_upload.client import *
 
 
 class UploadClient(TelegramClient):
-    def __init__(self, session_name, api_id, api_hash, proxy=None, loop: asyncio.AbstractEventLoop = None, ):
-        super().__init__(SESSION_DIR + session_name, api_id, api_hash, proxy=proxy)
+    _is_initialized = False
+
+    def __init__(self, session_name, api_id, api_hash, proxy=None, loop: asyncio.AbstractEventLoop = None):
+        try:
+            super().__init__(SESSION_DIR + session_name, api_id, api_hash, proxy=proxy)
+            self._is_initialized = True
+        except OperationalError as e:
+            logging.warning(e)
 
     async def start(
             self,
@@ -18,7 +26,8 @@ class UploadClient(TelegramClient):
             bot_token=None, force_sms=False, code_callback=None,
             first_name='New User', last_name='', max_attempts=3):
         return await super().start(phone=phone, password=password, bot_token=bot_token, force_sms=force_sms,
-                                   first_name=first_name, last_name=last_name, max_attempts=max_attempts)
+                                   first_name=first_name, last_name=last_name,
+                                   max_attempts=max_attempts) if self._is_initialized else None
 
     @staticmethod
     async def get_file(url: str, filename: str) -> str:

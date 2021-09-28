@@ -1,12 +1,10 @@
 from loader import dp
 from .instagram import InstagramUserFilter, InstagramHighlightFilter, InstagramStoryFilter, InstagramPostFilter, InstagramUserInlineFilter, InstagramHighlightInlineFilter, InstagramStoryInlineFilter, InstagramPostInlineFilter
 from .is_admin import AdminFilter
-from .is_subscriber import SubscriberFilter
 
 
 if __name__ == "filters":
     dp.filters_factory.bind(AdminFilter)
-    dp.filters_factory.bind(SubscriberFilter)
     dp.filters_factory.bind(InstagramUserFilter)
     dp.filters_factory.bind(InstagramHighlightFilter)
     dp.filters_factory.bind(InstagramStoryFilter)

@@ -1,11 +1,10 @@
 from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.exceptions import BotBlocked
-from asyncpg.exceptions import ForeignKeyViolationError
 from gino import Gino
 from data.config import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
 from datetime import datetime, timedelta
-from sqlalchemy import Column, Integer, String, Sequence, DateTime, ForeignKey, Index, and_, Float, VARCHAR
+from sqlalchemy import Column, Integer, String, Sequence, DateTime, ForeignKey, Index, and_, VARCHAR
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy import sql
 
@@ -81,103 +80,6 @@ class User(database.Model):
 
     def __repr__(self):
         return f'<User(id=\'{self.id}\', first_name=\'{self.first_name}\', username=\'{self.username}\')>'
-
-
-class Purchase(database.Model):
-    __tablename__ = 'purchases'
-
-    id = Column(Integer, Sequence('purc_id_seq'), primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.user_id'))
-    amount = Column(Float)
-    created_at = Column(DateTime)
-    query: sql.Select
-
-    _idx = Index('purc_id_index', 'id')
-
-    def __init__(self, user_id: int = None, amount: int = None,
-                 created_at: datetime = None):
-        super().__init__()
-        self.user_id, self.amount, self.created_at = user_id, amount, created_at
-
-    @staticmethod
-    async def add(user_id: int, amount: int,
-                  created_at: datetime):
-        try:
-            purc = Purchase(user_id, amount, created_at)
-            await purc.create()
-        except ForeignKeyViolationError:
-            await User.add(user_id=user_id)
-            purc = Purchase(user_id, amount, created_at)
-            await purc.create()
-        return purc
-
-    @staticmethod
-    async def get(user_id: int, amount: int, created_at: datetime):
-        return await Purchase.query.where(and_(and_(Purchase.user_id == user_id, Purchase.amount == amount),
-                                               Purchase.created_at == created_at)).gino.first()
-
-    @staticmethod
-    async def sum_for_date(date: datetime):
-        next_day = date.date() + timedelta(1)
-        subs_sum = await database.select([database.func.sum(Purchase.amount)]).where(
-            and_(Purchase.created_at >= date.date(), Purchase.created_at < next_day)).gino.scalar()
-        return subs_sum if subs_sum else 0
-
-    @staticmethod
-    async def sum_for_dates(date: datetime, duration: int):
-        result = dict()
-        for day in reversed(range(duration)):
-            tmp_date = date - timedelta(day)
-            result[tmp_date.strftime('%d.%m')] = await Purchase.sum_for_date(tmp_date)
-        return result
-
-    def __repr__(self):
-        return f'<Purchase(id=\'{self.id}\', user_id=\'{self.user_id}\', amount=\'{self.amount}\')>'
-
-
-class Subscriber(database.Model):
-    __tablename__ = 'subscribers'
-
-    id = Column(Integer, Sequence('subscribers_id_seq'), primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.user_id'))
-    ended_at = Column(DateTime)
-    query: sql.Select
-
-    _idx1 = Index('subscribers_id_index', 'id')
-    _idx2 = Index('subscribers_user_id_index', 'user_id')
-
-    def __init__(self, user_id: int = None, ended_at: datetime = None):
-        super().__init__()
-        self.user_id, self.ended_at = user_id, ended_at
-
-    @staticmethod
-    async def add(user_id: int, duration: int):
-        subscriber = await Subscriber.get(user_id=user_id)
-        if subscriber and subscriber.is_actual():
-            await subscriber.update(ended_at=subscriber.ended_at + timedelta(duration)).apply()
-        elif subscriber:
-            await subscriber.update(ended_at=datetime.now() + timedelta(duration)).apply()
-        else:
-            try:
-                subscriber = Subscriber(user_id=user_id,
-                                        ended_at=datetime.now() + timedelta(duration))
-                await subscriber.create()
-            except ForeignKeyViolationError:
-                await User.add(user_id=user_id)
-                subscriber = Subscriber(user_id=user_id,
-                                        ended_at=datetime.now() + timedelta(duration))
-                await subscriber.create()
-        return subscriber
-
-    def is_actual(self):
-        return True if self.ended_at >= datetime.now() else False
-
-    @staticmethod
-    async def get(user_id: int):
-        return await Subscriber.query.where(Subscriber.user_id == user_id).gino.first()
-
-    def __repr__(self):
-        return f'<Subscriber(user_id=\'{self.user_id}\', ended_at=\'{self.ended_at.strftime("%d.%m.%Y")}\')>'
 
 
 class Requests(database.Model):

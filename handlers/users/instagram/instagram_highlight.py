@@ -4,7 +4,7 @@ from utils.db_api.database import Requests
 from utils.instagram import InstagramHighlight
 
 
-@dp.message_handler(is_subscriber=True, instagram_highlight=True, state='*')
+@dp.message_handler(instagram_highlight=True, state='*')
 async def instagram_highlight_handler(message: Message):
     post = InstagramHighlight(message.text)
     await post.start()
@@ -12,7 +12,7 @@ async def instagram_highlight_handler(message: Message):
     await Requests.add(user_id=message.from_user.id, content_type='h')
 
 
-@dp.inline_handler(is_subscriber=True, instagram_inline_highlight=True, state='*')
+@dp.inline_handler(instagram_inline_highlight=True, state='*')
 async def instagram_highlight_inline_handler(query: InlineQuery):
     highlight = InstagramHighlight(query.query.strip())
     await highlight.start()

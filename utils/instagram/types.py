@@ -161,8 +161,8 @@ class InstagramUser:
         return text(
             f'{"🔒" if self.is_private else "👤"} <a href="https://www.instagram.com/{self.username}/">{self.username}</a>',
             f'📷 Количество постов – <b>{self.posts_count}</b>' if self.posts_count is not None else '',
-            f'📥 Количество подписчиков – <b>{self.followers}</b>' if self.followers is not None else '',
-            f'📤 Количество подписок – <b>{self.followings}</b>\n' if self.followings is not None else '\n',
+            f'⬇️ Количество подписчиков – <b>{self.followers}</b>' if self.followers is not None else '',
+            f'⬆️ Количество подписок – <b>{self.followings}</b>\n' if self.followings is not None else '\n',
             f'<b>{self.full_name}</b>' if self.full_name and self.biography else '',
             f'<i>{self.biography}</i>' if self.biography else '',
             sep='\n')

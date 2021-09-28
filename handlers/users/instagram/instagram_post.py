@@ -4,7 +4,7 @@ from utils.db_api.database import Requests
 from utils.instagram import InstagramPost
 
 
-@dp.message_handler(is_subscriber=True, instagram_post=True, state='*')
+@dp.message_handler(instagram_post=True, state='*')
 async def instagram_post_handler(message: Message):
     post = InstagramPost(message.text)
     await post.start()
@@ -12,7 +12,7 @@ async def instagram_post_handler(message: Message):
     await Requests.add(user_id=message.from_user.id, content_type='p')
 
 
-@dp.inline_handler(is_subscriber=True, instagram_inline_post=True, state='*')
+@dp.inline_handler(instagram_inline_post=True, state='*')
 async def instagram_post_inline_handler(query: InlineQuery):
     post = InstagramPost(query.query.strip())
     await post.start()
