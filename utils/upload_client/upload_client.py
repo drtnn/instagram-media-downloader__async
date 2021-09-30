@@ -20,14 +20,17 @@ class UploadClient(TelegramClient):
 
     async def start(
             self,
-            phone=lambda: click.prompt('Please enter your phone', type=phone_match),
-            password=lambda: getpass.getpass('Please enter your password: '),
+            phone=None,
+            password=None,
             *,
             bot_token=None, force_sms=False, code_callback=None,
             first_name='New User', last_name='', max_attempts=3):
-        return await super().start(phone=phone, password=password, bot_token=bot_token, force_sms=force_sms,
-                                   first_name=first_name, last_name=last_name,
-                                   max_attempts=max_attempts) if self._is_initialized else None
+        try:
+            return await super().start(phone=phone, password=password, bot_token=bot_token, force_sms=force_sms,
+                                       first_name=first_name, last_name=last_name,
+                                       max_attempts=max_attempts)
+        except:
+            pass
 
     @staticmethod
     async def get_file(url: str, filename: str) -> str:
